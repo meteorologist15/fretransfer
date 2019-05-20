@@ -1,0 +1,12 @@
+### Dependencies for Core fretransferFunctionality  ###
+###                                                 ###
+### To install, run:                                ###
+###     $ pip3 install -r requirements.txt          ###
+###                                                 ###
+#######################################################
+
+argparse
+os
+sys
+glob
+
