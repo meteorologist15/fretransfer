@@ -7,6 +7,8 @@ This repository contains fretransfer scripts that generate argument files (``arg
   * os
   * sys
   * glob
+  * re
+  * subprocess
 # Quickstart
 1. open a terminal and clone the repository  
    `git clone git@github.com:wrongkindofdoctor/fretransfer.git` or  
@@ -16,7 +18,7 @@ This repository contains fretransfer scripts that generate argument files (``arg
 3. To run fretransfer on history files with required arguments:  
    ```
    python3 fretransfer -expName mom6_solo_global_ALE_z -fileType history  
-   -workDir /home/workingDirectory -remoteDir /archive/Firstname.Lastname -Destination gfdl 
+   -sourceDir /home/sourceDirectory -destDir /archive/Firstname.Lastname -destMachine gfdl 
    ```
 # Support or Contact
 It you are having problems using the code, open an issue in the fretransfer repository:  
