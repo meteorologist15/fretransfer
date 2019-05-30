@@ -7,29 +7,88 @@
 import argparse
 import sys
 import os
-# 
+import re
+import subprocess
+import shutil
+
 # Class for managing  argFile templates
-class argFileTemplate(object):
+class argFileTemplate:
     
-    def __init__(self, argfile_template_path):
-        self.template = get_template(argfile_template_path)
-        
-    def get_template(filepath=None):
+    def __init__(self, fileType):
+        self.fileType=fileType
+        self.templateName = self.fileType + 'ArgfileTemplate.txt'
+        templateDir=get_fre_dir()
+        self.templateLocation = get_template(templateDir + '/' + self.templateName)
+    def get_template(filePath=None):
         try:
-             os.path.isfile(filepath)
+             os.path.isfile(filePath)
         except FileExistsError:
             print("Template file not found")
         
         return filepath
     
-    def new_file(self,filepath=None):
-        return argFile(self, filepath)
+# Class for argFile to create with a template   
+class argFile(argFileTemplate):
+ 
+    def __init__(self,fileType,newFilePath):
+       argFileTemplate.__init__(self,fileType)
+       newFilePath = new_file(self,filePath)
+    
+       copy_file(self.templateLocation,newFilePath)
+    # each new file has a filePath set to None by default    
+    def new_file(self,filePath=None):
+        fileName =self.fileType + 'Argfile.txt'
+        return os.path.join(filePath,fileName)
 
-class argFile(object):
-    """ Class for subdocument to insert into master document """
-    def __init__(self, tpl,docpath=None):
-        self.tpl = tpl
+def copy_file(srcPath,destPath):
+    shutil.copy(srcPath,destPath)
+    
+def pexec(*args):
+    return subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)#.communicate()[0].rstrip()
 
+# determine the location of the host machine
+def get_hostname():
+    hostName=os.environt['HOST']
+    if 'gfdl.noaa.gov' | 'gaea' | 'theia' in hostName:
+        return(hostName)
+    else:
+        sys.exit('Error: $HOST is not gfdl, gaea, or theia. Exiting.')
+# determine the location of the Fre source code and corresponding argFile templates
+# assumes that argFile templates will be placed in the fre-commands directory on the host machine
+def get_fre_dir():
+    hostName=get_host_name()
+    freVersion=get_fre_version()
+    if 'gfdl.noaa.gov' in hostName:
+        freDir = '/home/fms/local/opt/fre-commands/' + freVersion + '/site/gfdl-ws'
+    elif 'gaea' in hostName:
+        freDir = '/ncrc/home2/fms/local/opt/fre-commands/'  + freVersion + '/site/ncrc_common'
+    elif 'theia' in hostName:
+        freDir = '/home/fms/local/opt/fre-commands/' + freVersion +  '/site/theia' 
+        
+    return freDir
+
+# return the fre module file version currently loaded in the environment
+def get_fre_version():
+    moduleVersion=os.environ['MODULE_VERSION']
+   
+    moduleCmd='/usr/local/Modules/' + moduleVersion + '/bin/modulecmd'
+    #print(moduleCmd)
+    p=pexec(moduleCmd,"tcsh", "list")
+    # Read stdout and print each new line
+    sys.stdout.flush()
+    for line in iter(p.stdout.readline, b''):
+        sys.stdout.flush()
+        # convert the byte object to a string
+        lineStr = line.decode()
+        # search for the fre version
+        if 'bronx-' in lineStr:
+           useline = lineStr.strip()
+           searchResult=re.search(r'(?<=fre/)\S*',lineStr)
+           freVersion = searchResult.group(0)
+           print('Using fre/' + freVersion.strip())
+           break
+    
+    return freVersion
 
 # Parse the command-line arguments
 def parse_args():
@@ -107,8 +166,8 @@ def main():
       tpl=argFileTemplate(os.path.join(fre_root,ftype,'_argfile_template'))
       argFile = tpl.new_file()
 
-        f = open(tpl,'a')
+      f = open(tpl,'a')
         
-        f.close
+      f.close
 
 main()
