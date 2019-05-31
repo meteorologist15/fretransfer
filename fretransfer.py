@@ -10,6 +10,7 @@ import os
 import re
 import subprocess
 import shutil
+import datetime
 
 # Class for managing  argFile templates
 class argFileTemplate:
@@ -32,25 +33,48 @@ class argFile(argFileTemplate):
  
     def __init__(self,fileType,newFilePath):
        argFileTemplate.__init__(self,fileType)
-       newFilePath = new_file(self,filePath)
+       newFileLocation = new_file(self,newFilePath)
     
-       copy_file(self.templateLocation,newFilePath)
-    # each new file has a filePath set to None by default    
-    def new_file(self,filePath=None):
-        fileName =self.fileType + 'Argfile.txt'
-        return os.path.join(filePath,fileName)
-
+       copy_file(self.templateLocation,newFileLocation)
+       return newFileLocation
+    # each new file has a rootFilePath set to None by default    
+    # the new file is placed in {newFilePath}/{fileType}
+    def new_file(self,rootFilePath=None):
+        fileName = get_new_file_name(self)
+        return os.path.join(rootFilePath, self.fileType, fileName)
+    
+    def get_new_file_name(self):
+        fileNameRoot = 'output.stager.'
+        if self.fileType == 'ascii':
+           beginDate = '11'
+           fileNameAppendix = beginDate + '.A.args'
+        elif self.fileType == 'restart':
+           endDate = '12'
+           fileNameAppendix = endDate + '.R.args'
+        elif self.fileType == 'history':
+            begindDate = '11'
+            fileNameAppendix = beginDate + '.H.args'           
+        newFileName=fileNameRoot + fileNameAppendix
+        return newFileName
+    
 def copy_file(srcPath,destPath):
     shutil.copy(srcPath,destPath)
     
-def pexec(*args):
-    return subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)#.communicate()[0].rstrip()
+def pexec(arg,*args):
+    argList = []
+    argList.append(arg)
+ 
+    for a in args:
+        argList.append(''.join(a)) 
+    print(argList)
+    return subprocess.Popen(argList, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
 # determine the location of the host machine
-def get_hostname():
-    hostName=os.environt['HOST']
-    if 'gfdl.noaa.gov' | 'gaea' | 'theia' in hostName:
-        return(hostName)
+def get_host_name():
+    hostName=os.environ['HOST']
+    print(hostName)
+    if  any([re.search(r, hostName) for r in ['gfdl.noaa.gov','gaea', 'theia']]):
+        return hostName
     else:
         sys.exit('Error: $HOST is not gfdl, gaea, or theia. Exiting.')
 # determine the location of the Fre source code and corresponding argFile templates
@@ -90,6 +114,38 @@ def get_fre_version():
     
     return freVersion
 
+def get_time_stamp(*args):
+    #print(args)
+    baseDir= get_fre_dir()
+    
+    cmd = os.path.join(baseDir.split("/site")[0],'sbin','time_stamp.csh')
+    try:
+        os.path.isfile(cmd)
+    except FileExistsError:
+        print("time_stamp.csh not found in the fre root directory")
+        
+    #print('time stamp script is ',cmd)
+   
+    p = pexec(cmd,args)
+    
+     # Read stdout and print each new line
+    sys.stdout.flush()
+    for line in iter(p.stdout.readline, b''):
+        sys.stdout.flush()
+        # convert the byte object to a string
+        lineStr = line.decode()
+        print(lineStr)
+         # search for the fre version
+        if 'no_time_stamp' in lineStr:
+           wereAtNowNow=datetime.datetime.now()
+           dateStr = wereAtNowNow.strftime("%Y.%m.%d.%H.%M.%S")
+           break
+        else:
+           dateStr = lineStr.strip()
+           break
+    print(dateStr)  
+    return dateStr
+     
 # Parse the command-line arguments
 def parse_args():
     parser = argparse.ArgumentParser()
