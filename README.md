@@ -4,11 +4,13 @@ This repository contains fretransfer scripts that generate argument files (``arg
 * Python v3.5 or later
 * Python modules:
   * argparse
-  * os
-  * sys
+  * datetime
   * glob
+  * os
   * re
+  * shutil
   * subprocess
+  * sys
 # Quickstart
 1. open a terminal and clone the repository  
    `git clone git@github.com:wrongkindofdoctor/fretransfer.git` or  
