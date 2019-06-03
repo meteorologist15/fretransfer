@@ -18,47 +18,60 @@ class argFileTemplate:
     def __init__(self, fileType):
         self.fileType=fileType
         self.templateName = self.fileType + 'ArgfileTemplate.txt'
-        templateDir=get_fre_dir()
-        self.templateLocation = get_template(templateDir + '/' + self.templateName)
-    def get_template(filePath=None):
+#        self.templateLocation = argFileTemplate.get_template(os.path.join(get_fre_dir(),self.templateName))
+        self.templateLocation = argFileTemplate.get_template(os.path.join('/home/Jessica.Liptak/fretransfer/RemoteSystemsTempFiles',self.templateName))
+        
+    @staticmethod
+    def get_template(filePath):
         try:
              os.path.isfile(filePath)
         except FileExistsError:
             print("Template file not found")
         
-        return filepath
+        return filePath
+    
     
 # Class for argFile to create with a template   
 class argFile(argFileTemplate):
  
     def __init__(self,fileType,newFilePath):
        argFileTemplate.__init__(self,fileType)
-       newFileLocation = new_file(self,newFilePath)
+       self.newFileLocation = argFile.new_file(self,newFilePath)
     
-       copy_file(self.templateLocation,newFileLocation)
-       return newFileLocation
+       copy_file(self.templateLocation,self.newFileLocation)
+    
     # each new file has a rootFilePath set to None by default    
     # the new file is placed in {newFilePath}/{fileType}
-    def new_file(self,rootFilePath=None):
-        fileName = get_new_file_name(self)
+    @staticmethod
+    def new_file(self,rootFilePath):
+        fileName = argFile.get_new_file_name(self)
         return os.path.join(rootFilePath, self.fileType, fileName)
     
+    @staticmethod
     def get_new_file_name(self):
         fileNameRoot = 'output.stager.'
         if self.fileType == 'ascii':
-           beginDate = '11'
+           beginDate = get_time_stamp('-b')
            fileNameAppendix = beginDate + '.A.args'
         elif self.fileType == 'restart':
-           endDate = '12'
+           endDate = get_time_stamp('-e')
            fileNameAppendix = endDate + '.R.args'
         elif self.fileType == 'history':
-            begindDate = '11'
+            beginDate = get_time_stamp('-b')
             fileNameAppendix = beginDate + '.H.args'           
         newFileName=fileNameRoot + fileNameAppendix
         return newFileName
     
 def copy_file(srcPath,destPath):
+    pathParts = os.path.split(destPath)
+    #print(pathParts[0])
+    if not os.path.isdir(pathParts[0]):
+       os.makedirs(pathParts[0])
     shutil.copy(srcPath,destPath)
+    try:
+        os.path.isfile(destPath)
+    except FileExistsError:
+        print("Error: file",destPath ,"not created")
     
 def pexec(arg,*args):
     argList = []
@@ -66,13 +79,13 @@ def pexec(arg,*args):
  
     for a in args:
         argList.append(''.join(a)) 
-    print(argList)
+    #print(argList)
     return subprocess.Popen(argList, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
 # determine the location of the host machine
 def get_host_name():
     hostName=os.environ['HOST']
-    print(hostName)
+    #print("Host name is", hostName)
     if  any([re.search(r, hostName) for r in ['gfdl.noaa.gov','gaea', 'theia']]):
         return hostName
     else:
@@ -109,7 +122,7 @@ def get_fre_version():
            useline = lineStr.strip()
            searchResult=re.search(r'(?<=fre/)\S*',lineStr)
            freVersion = searchResult.group(0)
-           print('Using fre/' + freVersion.strip())
+           #print('Using fre/' + freVersion.strip())
            break
     
     return freVersion
@@ -134,18 +147,21 @@ def get_time_stamp(*args):
         sys.stdout.flush()
         # convert the byte object to a string
         lineStr = line.decode()
-        print(lineStr)
-         # search for the fre version
+        #print(lineStr)
+         # return a string appendixx `tmp(DOY)(HHMMSS)`
         if 'no_time_stamp' in lineStr:
            wereAtNowNow=datetime.datetime.now()
-           dateStr = wereAtNowNow.strftime("%Y.%m.%d.%H.%M.%S")
+           dateStr = wereAtNowNow.strftime("%Y.%m.%d")
+           dt = datetime.datetime.strptime(dateStr, "%Y.%m.%d")
+           tt = dt.timetuple()
+          
+           dateStr = "tmp" +  str(tt.tm_yday) + wereAtNowNow.strftime("%H%M%S")
            break
         else:
            dateStr = lineStr.strip()
            break
-    print(dateStr)  
+       
     return dateStr
-     
 # Parse the command-line arguments
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -216,14 +232,19 @@ def parse_args():
 
 # main program
 def main():
-  fre_root =""
+  # parse the arguments
   args = parse_args()
+  # set up files
   for ftype in args.fileType:
-      tpl=argFileTemplate(os.path.join(fre_root,ftype,'_argfile_template'))
-      argFile = tpl.new_file()
-
-      f = open(tpl,'a')
+      try:
+        ftype == 'ascii' or ftype == 'restart' or ftype == 'history'
+      except ValueError:   
+        print('Invalid fileType value. Must be `history`, `ascii`, or `restart`.')
+      else: 
+        A = argFile(ftype,'/home/Jessica.Liptak/temp')
+       
+#      f = open(argFile,'a')
         
-      f.close
+#      f.close
 
 main()
