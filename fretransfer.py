@@ -5,6 +5,8 @@
 # -sourceDir /home/sourceDirectory -destDir /archive/Firstname.Lastname -destMach gfdl
 ###########################################################################################
 import argparse
+import fnmatch
+import glob
 import sys
 import os
 import re
@@ -34,10 +36,23 @@ class argFileTemplate:
 # Class for argFile to create with a template   
 class argFile(argFileTemplate):
  
-    def __init__(self,fileType,newFilePath):
+    def __init__(self, fileType, newFilePath,*args):
+       filePatterns = []
        argFileTemplate.__init__(self,fileType)
+       # get the full path of new argFile 
        self.newFileLocation = argFile.new_file(self,newFilePath)
-    
+       # clean out argFiles from the working directory
+       clean_dir(os.path.split(self.newFileLocation)[0],['*.args'])
+     
+       # get list of files to process
+       argFile.get_file_list(self,self.fileType,filePatterns)
+       if any(self.fileList):
+      #     set asciiSuffix = ascii/$begindate.ascii_out
+     # set asciiArchDir = $outputDir/$asciiSuffix
+      #set asciiWorkDir = $tmpOutputDir$asciiArchDir
+      
+      
+       # copy the argFile template to the new file
        copy_file(self.templateLocation,self.newFileLocation)
     
     # each new file has a rootFilePath set to None by default    
@@ -62,6 +77,38 @@ class argFile(argFileTemplate):
         newFileName=fileNameRoot + fileNameAppendix
         return newFileName
     
+    @staticmethod
+    def get_file_list(self,fileType,filePatterns):
+        if any(filePatterns):
+           patternMatch = filePatterns
+        elif fileType == 'ascii': 
+           patternMatch = ['*out','*results*','*log*','*timestats*','*stats*','*velocity_truncations*']
+        elif fileType == 'restart':
+            patternMatch = ['*res*','*nc*','*.input.*tgz','*.ww3']
+        elif fileType == 'history':
+            patternMatch = ['*nc*','*.ww3']
+        
+        names=os.listdir('.')
+        self.fileList = multi_filter(names, patternMatch)
+
+#Generator function which yields a list of names that match one or more of the patterns."""       
+def multi_filter(names, patterns):
+    fileList = []
+    for name in names:
+        for pattern in patterns:
+            if fnmatch.fnmatch(name, pattern) and name not in fileList:
+                fileList.append(name)
+    return fileList
+                
+# delete file(s) in a directory
+def clean_dir(pathName,removeFilePatterns):
+    os.chdir(pathName)
+    for pattern in removeFilePatterns:
+        fileList=glob.glob(pattern)
+        for file in fileList:
+            os.remove(file)
+    
+               
 def copy_file(srcPath,destPath):
     pathParts = os.path.split(destPath)
     #print(pathParts[0])
@@ -236,12 +283,17 @@ def main():
   args = parse_args()
   # set up files
   for ftype in args.fileType:
-      try:
-        ftype == 'ascii' or ftype == 'restart' or ftype == 'history'
-      except ValueError:   
-        print('Invalid fileType value. Must be `history`, `ascii`, or `restart`.')
-      else: 
-        A = argFile(ftype,'/home/Jessica.Liptak/temp')
+        assert (ftype == 'ascii' or ftype == 'restart' or ftype == 'history'), 'Invalid fileType value.,\
+                Must be `history`, `ascii`, or `restart`'
+        sourcePath = os.path.join(args.sourceDir,ftype)
+        assert (os.path.exists(sourcePath)), 'Error: directory does not exist.'
+                
+        os.chdir(sourcePath)
+        
+        A=argFile(ftype,'/home/Jessica.Liptak/temp')
+        if any(A.fileList) and A.fileList[0] != '':
+           
+        
        
 #      f = open(argFile,'a')
         
