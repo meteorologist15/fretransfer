@@ -5,6 +5,7 @@ This repository contains fretransfer scripts that generate argument files (``arg
 * Python modules:
   * argparse
   * datetime
+  * fnmatch
   * glob
   * os
   * re
