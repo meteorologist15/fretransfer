@@ -41,19 +41,11 @@ class argFile(argFileTemplate):
        argFileTemplate.__init__(self,fileType)
        # get the full path of new argFile 
        self.newFileLocation = argFile.new_file(self,newFilePath)
-       # clean out argFiles from the working directory
-       clean_dir(os.path.split(self.newFileLocation)[0],['*.args'])
+       
      
        # get list of files to process
        argFile.get_file_list(self,self.fileType,filePatterns)
-       if any(self.fileList):
-      #     set asciiSuffix = ascii/$begindate.ascii_out
-     # set asciiArchDir = $outputDir/$asciiSuffix
-      #set asciiWorkDir = $tmpOutputDir$asciiArchDir
-      
-      
-       # copy the argFile template to the new file
-       copy_file(self.templateLocation,self.newFileLocation)
+     
     
     # each new file has a rootFilePath set to None by default    
     # the new file is placed in {newFilePath}/{fileType}
@@ -91,6 +83,32 @@ class argFile(argFileTemplate):
         names=os.listdir('.')
         self.fileList = multi_filter(names, patternMatch)
 
+# write the data to the file
+def write_file(filePath,fileStatus="",**kwargs):
+    print(filePath)
+    try:
+        fileStatus == "w" or fileStatus == "a"
+    except ValueError:
+        print("Error: fileStatus must be `w` or `a`")
+    
+        
+    shutil.copy(filePath, filePath+"~" )
+    source= open(filePath+"~", "r" )
+    lines = []
+    for line in source:
+        print(line)
+        lines.append(line)
+    source.close()
+    # write values to argFile
+    destination = open(filePath, fileStatus)
+    for key, value in kwargs.items():
+        print(key,value)
+        for line in lines:
+            if key in line:
+               destination.write('set ' + key + ' = ' + value + "\n" )
+   
+    destination.close()
+
 #Generator function which yields a list of names that match one or more of the patterns."""       
 def multi_filter(names, patterns):
     fileList = []
@@ -113,8 +131,9 @@ def copy_file(srcPath,destPath):
     pathParts = os.path.split(destPath)
     #print(pathParts[0])
     if not os.path.isdir(pathParts[0]):
-       os.makedirs(pathParts[0])
-    shutil.copy(srcPath,destPath)
+        os.makedirs(pathParts[0])
+        
+    shutil.copyfile(srcPath,destPath)
     try:
         os.path.isfile(destPath)
     except FileExistsError:
@@ -173,7 +192,7 @@ def get_fre_version():
            break
     
     return freVersion
-
+# create a time stamp to append to the temporary argFiles and directory.
 def get_time_stamp(*args):
     #print(args)
     baseDir= get_fre_dir()
@@ -195,7 +214,7 @@ def get_time_stamp(*args):
         # convert the byte object to a string
         lineStr = line.decode()
         #print(lineStr)
-         # return a string appendixx `tmp(DOY)(HHMMSS)`
+         # return a string appendix `tmp(DOY)(HHMMSS)`
         if 'no_time_stamp' in lineStr:
            wereAtNowNow=datetime.datetime.now()
            dateStr = wereAtNowNow.strftime("%Y.%m.%d")
@@ -209,71 +228,226 @@ def get_time_stamp(*args):
            break
        
     return dateStr
+      
 # Parse the command-line arguments
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-expName',
+    parser.add_argument("-help", help='Generate an argFile with user-defined parameters and fre-defined \
+                                     shell variables. Example with user-defined arguments: python3 fretransfer.py userDefs \
+                                     -expName myExperiment -fileType history restart ascii -sourceDir /home/Jessica.Liptak/temp \
+                                     -destDir /archive/Firstname.Lastname -destMachine gfdl \
+                                     Example with fre-defined shell variables: python3 fretransfer.py freDefs -paramCheckSumOn 1 ' )
+    subparsers = parser.add_subparsers(dest='defCategory')
+    
+    # sub-parser for user-defined options
+    parser_userDef = subparsers.add_parser('userDefs', help='User-defined options')
+    parser_userDef.add_argument('-expName',
                         type=str, 
                         default='',
                         required=True,
                         help='name of the experiment')
-    parser.add_argument('-fileType', 
+    parser_userDef.add_argument('-fileType', 
                         default=[], 
                         nargs='+', 
                         required=True,
                         help='type(s) of file(s) to transfer [ascii, history, restart]')
-    parser.add_argument('-sourceDir',
+    parser_userDef.add_argument('-sourceDir',
                         type=str, 
                         default='',
                         required=True,
                         help='Working directory with ASCII, RESTART, and/or HISTORY sub-directories that contain the \
                         ascii, history, and restart files')
-    parser.add_argument('-destDir',
+    parser_userDef.add_argument('-destDir',
                         type=str,
                         default='',
                         required=True,
                         help='root directory on the destination machine. Files will be transferred to: \
                         ${destDir}/${expName}/[ASCII,RESTART,HISTORY]')
-    parser.add_argument('-destMachine', 
+    parser_userDef.add_argument('-destMachine', 
                         type=str, 
                         choices=['gaea', 'gfdl', 'theia'],
                         required=True,
                         help='name of the machine to transfer the files to. [gaea, gfdl, theia]')
-    # optional arguments
-    parser.add_argument('-makeTarfile', 
+    # optional user-defined arguments
+    parser_userDef.add_argument('-makeTarfile', 
                         type=bool,
                         action='store',
                         default=False,
                         help='create a tarball containing the files before transferring? Default = false')
     
-    parser.add_argument('-asciiPatterns', default=['out','results', 'log', 'timestats', 'stats'],
+    parser_userDef.add_argument('-asciiPatterns', default=['out','results', 'log', 'timestats', 'stats'],
                         nargs='?',
                         action='store',
                         help='space-separated list of ascii file patterns to search for.\
                         User-specified pattern(s) replace the default list\
                         Ascii files containing the following patterns are transferred by default:\
                          "out","results", "log", "timestats", "stats", "velocity truncations" ')
-    parser.add_argument('-restartPatterns', default=['.res.','.nc.', '.input.', '.tgz$', '.ww3$'],
+    parser_userDef.add_argument('-restartPatterns', default=['.res.','.nc.', '.input.', '.tgz$', '.ww3$'],
                         nargs='?',
                         action='store',
                         help='space-separated list of restart file patterns to search for. \
                         User-specified pattern(s) replace the default list. \
                         Restart files containing the following patterns are transferred by default:\
                          ".res.",".nc.", ".input.", ".tgz$", ".ww3$" ')
-    parser.add_argument('-historyPatterns', default=['.nc.','.ww3$', '^rregion'],
+    parser_userDef.add_argument('-historyPatterns', default=['.nc.','.ww3$', '^rregion'],
                         nargs='?',
                         action='store',
                         help='space-separated list of history file patterns to search for.\
                         User-specified pattern(s) replace the default list. \
                         History files containing the following patterns are transferred by default,\
                          "^rregion",".nc.",".ww3$" ')
-    parser.add_argument('-stagingType',
+    parser_userDef.add_argument('-stagingType',
                         choices=['chained','online'],
                         action='store',
                         default='chained',
                         nargs='?',
                         help='output staging type. Default is "chained".')
+    
+ 
+    # sub-parser for shell variables set by frerun
+
+    parser_frerun = subparsers.add_parser('freDefs', help='Shell variables set by `frerun`.')
+    parser_frerun.add_argument('-saveOptions', 
+                               action='store',
+                               type = str,
+                               nargs = '?',
+                               required = False,
+                               help='options for saving output files to pass to output.stager')
+    parser_frerun.add_argument('-xferOptions', 
+                               action='store',
+                               type = str,
+                               nargs = '?',
+                               required = False,
+                               help='options for transferring output files to pass to output.stager')
+    parser_frerun.add_argument('-paramPtmpOn', 
+                               action='store',
+                               default=0,
+                               type = int,
+                               choices=[0,1],
+                               required = False,
+                               help='Flag to copy data to ptmp directory')
+    parser_frerun.add_argument('-paramArchiveOn', 
+                               action='store',
+                               default=0,
+                               type = int,
+                               choices=[0,1],
+                               required = False,
+                               help='Flag to move data to archive directory')
+    parser_frerun.add_argument('-paramCheckSumOn', 
+                               action='store',
+                               default=0,
+                               type = int,
+                               choices=[0,1],
+                               required = False,
+                               help='Flag to do data checksums')
+    parser_frerun.add_argument('-ppStartOn', 
+                               action='store',
+                               default=0,
+                               type = int,
+                               choices=[0,1],
+                               required = False,
+                               help='Flag to start post-processing')
+    parser_frerun.add_argument('-paramVerbosityOn', 
+                               action='store',
+                               default=0,
+                               type = int,
+                               choices=[0,1],
+                               required = False,
+                               help='Flag for verbose output')
+    parser_frerun.add_argument('-actionCheckOn', 
+                               action='store',
+                               default=0,
+                               type = int,
+                               choices=[0,1],
+                               required = False,
+                               help='Flag to check argfile processing')
+    parser_frerun.add_argument('-actionRetryOn', 
+                               action='store',
+                               default=0,
+                               type = int,
+                               choices=[0,1],
+                               required = False,
+                               help='Flag to retry failed transfer jobs')
+    parser_frerun.add_argument('-actionSaveOn', 
+                               action='store',
+                               default=0,
+                               type = int,
+                               choices=[0,1],
+                               required = False,
+                               help='Flag to save data')
+    parser_frerun.add_argument('-actionXferOn', 
+                               action='store',
+                               default=0,
+                               type = int,
+                               choices=[0,1],
+                               required = False,
+                               help='Flag to transfer data')
+    parser_frerun.add_argument('-actionFillGridOn', 
+                               action='store',
+                               default=0,
+                               type = int,
+                               choices=[0,1],
+                               required = False,
+                               help='Flag to perform grid filling')
+    parser_frerun.add_argument('-saveRetries', 
+                               action='store',
+                               default=0,
+                               type = int,
+                               required = False,
+                               help='Number of times to retry failed save jobs')
+    parser_frerun.add_argument('-xferRetries', 
+                               action='store',
+                               default=0,
+                               type = int,
+                               required = False,
+                               help='Number of times to retry failed transfer jobs')
+    parser_frerun.add_argument('-saveRetry', 
+                               action='store',
+                               default=0,
+                               type = int,
+                               choices=[0,1],
+                               required = False,
+                               help='Flag to retry failed save jobs')
+    parser_frerun.add_argument('-xferRetry', 
+                               action='store',
+                               default=0,
+                               type = int,
+                               choices=[0,1],
+                               required = False,
+                               help='Flag to retry failed transfer jobs')
+    parser_frerun.add_argument('-hsmModuleFilesDir', 
+                               action='store',
+                               default='',
+                               type = str,
+                               required = False,
+                               help='Path to the hsm module file directory')
+    parser_frerun.add_argument('-hsmVersion', 
+                               action='store',
+                               default='',
+                               type = str,
+                               required = False,
+                               help='Version of hsm currently loaded in the environment')
+    parser_frerun.add_argument('-modulesHomeDir', 
+                               action='store',
+                               default='',
+                               type = str,
+                               required = False,
+                               help='Path to module file home directory')
+    parser_frerun.add_argument('-xferToolModuleFilesDir', 
+                               action='store',
+                               default='',
+                               type = str,
+                               required = False,
+                               help='Path to the fre transfer tools module file directory')
+    parser_frerun.add_argument('-xferToolVersion', 
+                               action='store',
+                               default='',
+                               type = str,
+                               required = False,
+                               help='Version of the fre transfer tools currently loaded in the environment')
+    
     args = parser.parse_args()
+
     return args
     
 
@@ -281,22 +455,38 @@ def parse_args():
 def main():
   # parse the arguments
   args = parse_args()
-  # set up files
-  for ftype in args.fileType:
+  # set up argFiles with user-defined options
+  
+  if args.defCategory == 'userDefs':
+    print('Userdefs')
+    # make a dictionary
+    argDict = {}
+    for a in vars(args):
+        argDict[a] = getattr(args,a)
+        #print('hello',argDict[a])
+    
+    for ftype in args.fileType:
         assert (ftype == 'ascii' or ftype == 'restart' or ftype == 'history'), 'Invalid fileType value.,\
-                Must be `history`, `ascii`, or `restart`'
+       #         Must be `history`, `ascii`, or `restart`'
         sourcePath = os.path.join(args.sourceDir,ftype)
         assert (os.path.exists(sourcePath)), 'Error: directory does not exist.'
                 
         os.chdir(sourcePath)
-        
+      
         A=argFile(ftype,'/home/Jessica.Liptak/temp')
-        if any(A.fileList) and A.fileList[0] != '':
-           
         
-       
-#      f = open(argFile,'a')
+        # clean out argFiles from the working directory
+        clean_dir(os.path.split(A.newFileLocation)[0],['*.args*'])
+        # copy the template file to the working directory
+        copy_file(A.templateLocation,A.newFileLocation)
+    
+        write_file(A.newFileLocation,"w",**argDict)
         
-#      f.close
+  elif args.defCategory == 'freDefs':
+    print('freDefs')
+    #for arg in vars(args):
+    #    print(arg, getattr(args, arg))
+      
+ 
 
 main()
