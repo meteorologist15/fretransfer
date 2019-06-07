@@ -20,12 +20,12 @@ This repository contains fretransfer scripts that generate argument files (``arg
    *assumes that the binary command for python v3.x is aliased to `python3`
 3. To run fretransfer on history files with required arguments:  
    ```
-   python3 fretransfer userDefs -expName mom6_solo_global_ALE_z -fileType history    
+   ./fretransfer userDefs -expName mom6_solo_global_ALE_z -fileType history    
    -sourceDir /home/sourceDirectory -destDir /archive/Firstname.Lastname -destMachine gfdl 
    ```
 4. Pass the shell variables defined by frerun to the history argFile generated in step 3:
    ```
-    python3 fretransfer freDefs -fileType history -sourceDir /home/sourceDirectory -actionSaveOn 1 [-more options]
+   ./fretransfer freDefs -fileType history -sourceDir /home/sourceDirectory -actionSaveOn 1 [-more options]
    ```
 # Support or Contact
 It you are having problems using the code, open an issue in the fretransfer repository:  
