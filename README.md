@@ -25,7 +25,7 @@ This repository contains fretransfer scripts that generate argument files (``arg
    ```
 4. Pass the shell variables defined by frerun to the history argFile generated in step 3:
    ```
-    python3 fretransfer freDefs -actionSaveOn 1  -actionXferOn $?flagOutputXferOn [-more options]
+    python3 fretransfer freDefs -fileType history -sourceDir /home/sourceDirectory -actionSaveOn 1 [-more options]
    ```
 # Support or Contact
 It you are having problems using the code, open an issue in the fretransfer repository:  
