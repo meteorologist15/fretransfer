@@ -310,6 +310,7 @@ def parse_args():
                          "^rregion",".nc.",".ww3$" ')
     parser_userDef.add_argument('-stagingType',
                         choices=['chained','online'],
+                        type=str.lower,
                         action='store',
                         default='chained',
                         help='output staging type. Default is "chained".')
