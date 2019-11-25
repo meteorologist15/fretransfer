@@ -3,28 +3,28 @@ set type             = ascii
 set actionCombineOn  = 0             
 set actionCheckOn    = 0    
 set actionSaveOn     = 1
-set paramArchiveOn   = $paramArchiveOn
-set paramPtmpOn      = $paramPtmpOn
-set paramCheckSumOn  = $paramCheckSumOn
-set paramCompressOn  = $paramCompressOn
-set paramVerbosityOn = $?flagVerbosityOn
+set paramArchiveOn   = 1
+set paramPtmpOn      = 0
+set paramCheckSumOn  = 0
+set paramCompressOn  = 0
+set paramVerbosityOn = 0
 set workDir          = $tmpOutputDir
 set ptmpDir          = $ptmpDir
 set archDir          = $asciiArchDir
 set outputDirRemote  = $asciiOutputDirRemote
 set saveOptions      = ( $asciiSaveOptions )
 set xferOptions      = ( $asciiXferOptions )
-set saveRetries               =   $outputStagerSaveRetries
-set xferRetries               =   $outputStagerXferRetries
+set saveRetries               =   4
+set xferRetries               =   4
 set saveRetry                 =   0
 set xferRetry                 =   0
-set freCommandsModuleFilesDir =   $freCommandsModuleFilesDir
+set freCommandsModuleFilesDir =   /ncrc/home2/fms/local/modulefiles
 set freCommandsVersion        =   $freCommandsVersion
 set hsmModuleFilesDir         =   $hsmModuleFilesDir
 set hsmVersion                =   $hsmVersion
 set xferToolModuleFilesDir    =   $xferToolModuleFilesDir
 set xferToolVersion           =   $xferToolVersion
-set modulesHomeDir            =   $modulesHomeDir
+set modulesHomeDir            =   /opt/modules/default
 
 setenv FRE_HSM_TEST_VERSION $FRE_HSM_TEST_VERSION
 setenv FRE_GCP_TEST_VERSION $FRE_GCP_TEST_VERSION
