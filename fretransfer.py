@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # FRETRANSFER
 # this is the main fretransfer script
-# example: python3 fretransfer -expName mom6_solo_global_ALE_z -fileType history \
+# example: python3 fretransfer userDefs -expName mom6_solo_global_ALE_z -fileType history \
 # -sourceDir /home/sourceDirectory -destDir /archive/Firstname.Lastname -destMach gfdl \
 # -groupAccount gfdl_f
 ###########################################################################################
@@ -22,7 +22,8 @@ class argFileTemplate:
         self.fileType=fileType
         self.templateName = self.fileType + 'ArgfileTemplate.txt'
 #        self.templateLocation = argFileTemplate.get_template(os.path.join(get_fre_dir(),self.templateName))
-        self.templateLocation = argFileTemplate.get_template(os.path.join('/home/Jessica.Liptak/fretransfer/RemoteSystemsTempFiles',self.templateName))
+        templateDir = os.path.join(os.getcwd(), "templates")
+        self.templateLocation = argFileTemplate.get_template(os.path.join(templateDir,self.templateName))
         
     @staticmethod
     def get_template(filePath):
@@ -83,7 +84,7 @@ class argFile(argFileTemplate):
         names=os.listdir('.')
         self.fileList = multi_filter(names, patternMatch)
 
-# write the data to the file
+# write user- and main program-defined values to the argFile
 def write_file(filePath,fileStatus="",**kwargs):
     try:
         fileStatus == "w" or fileStatus == "a"
@@ -91,32 +92,29 @@ def write_file(filePath,fileStatus="",**kwargs):
         print("Error: fileStatus must be `w` or `a`")
            
     shutil.copy(filePath, filePath+"~" )
+    print(filePath)
     # read in lines from the temporary sourceFile
-    source= open(filePath+"~", "r" )
-    lines = []
-    for line in source:
+    fileName = filePath+"~"
+    with open(fileName) as f: 
+        lines = f.readlines()
+    f.close()
+    # replace relevant lines with user-defined and preset values
+    for index,line in enumerate(lines):
         #print(line)
-        lines.append(line)
-    source.close()
-    # replace lines with values if they exist
-    for key, value in kwargs.items():
-        print(key, str(value))
-        for index,line in enumerate(lines):
+        for key, value in kwargs.items():
             if key in line:
-                if 'setenv'in line:
-                    lines[index] = 'setenv ' + key + '' + str(value)
+                #print key
+                if 'setenv' in line:
+                    lines[index] = 'setenv ' + str(key) + '' + str(value)
                 else:
-                    lines[index] = 'set ' + key + ' = ' + str(value)
-                break
-              
-    # write values to argFile
-    destination = open(filePath, fileStatus)
+                    lines[index] = 'set ' + str(key) + ' = ' + str(value)           
+    # write values to the argFile
+    f = open(filePath, fileStatus)
     for line in lines:
         #print(line)
-        if len(line.strip()) > 0:
-            destination.write(line + '\n')       
-    
-    destination.close()
+        if len(line.rstrip('\n')) > 0:
+            f.write(line + '\n')          
+    f.close()
     # remove the temporary file
     filePathParts = os.path.split(filePath)
     clean_dir(filePathParts[0],[filePathParts[1]+'~'])
@@ -281,8 +279,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-help", help='Generate an argFile with user-defined parameters and fre-defined \
                                      shell variables. Example with user-defined arguments: python3 fretransfer.py userDefs \
-                                     -expName myExperiment -fileType history restart ascii -sourceDir /home/Jessica.Liptak/temp \
-                                     -destDir /archive/Firstname.Lastname -destMachine gfdl \
+                                     -expName myExperiment -fileType history restart ascii -sourceDir /home/Dana.Scully/temp \
+                                     -destDir /archive/Dana.Scully -destMachine gfdl -groupAccount gfdl_f\
                                      Example with fre-defined shell variables: python3 fretransfer.py freDefs -paramCheckSumOn 1 ' )
     subparsers = parser.add_subparsers(dest='defCategory')
     
@@ -317,6 +315,10 @@ def parse_args():
                         choices=['gaea', 'gfdl', 'theia'],
                         required=True,
                         help='name of the machine to transfer the files to. [gaea, gfdl, theia]')
+    parser_userDef.add_argument('-groupAccount', 
+                        type=str,
+                        required=True,
+                        help='name of the gfdl group account (e.g., gfdl_f)')
     # optional user-defined arguments
     parser_userDef.add_argument('-makeTarfile', 
                         type=int,
@@ -329,6 +331,7 @@ def parse_args():
     parser_userDef.add_argument('-asciiPatterns', default=['out','results', 'log', 'timestats', 'stats'],
                         nargs='?',
                         action='store',
+                        type = str,
                         help='space-separated list of ascii file patterns to search for.\
                         User-specified pattern(s) replace the default list\
                         Ascii files containing the following patterns are transferred by default:\
@@ -336,6 +339,7 @@ def parse_args():
     parser_userDef.add_argument('-restartPatterns', default=['.res.','.nc.', '.input.', '.tgz$', '.ww3$'],
                         nargs='?',
                         action='store',
+                        type = str,
                         help='space-separated list of restart file patterns to search for. \
                         User-specified pattern(s) replace the default list. \
                         Restart files containing the following patterns are transferred by default:\
@@ -343,12 +347,14 @@ def parse_args():
     parser_userDef.add_argument('-historyPatterns', default=['.nc.','.ww3$', '^rregion'],
                         nargs='?',
                         action='store',
+                        type = str,
                         help='space-separated list of history file patterns to search for.\
                         User-specified pattern(s) replace the default list. \
                         History files containing the following patterns are transferred by default,\
                          "^rregion",".nc.",".ww3$" ')
     parser_userDef.add_argument('-stagingType',
                         choices=['chained','online'],
+                        type = str,
                         action='store',
                         default='chained',
                         help='output staging type. Default is "chained".')
@@ -606,7 +612,6 @@ def parse_args():
 
     return args
     
-
 # main program
 def main():
     # parse the arguments
@@ -620,64 +625,70 @@ def main():
         argDict = {}
         for a in vars(args):
             argDict[a] = getattr(args,a)
-
+           # print(argDict[a])
+        homeDir = os.getcwd()
         # directory with the templates; assumes you are in the fretransfer repo directory
-        templateDir = os.path.join(os.getcwd(), "templates")
-        if (.not. os.path.exists(templateDir)):
-        errMesg="Error: template directory " + templateDir + " does not exist"
-        print(errMesg)
-        sys.stderr.write(errMesg)
-        sys.exit(2)
+        templateDir = os.path.join(homeDir, "templates")
+        if (not os.path.exists(templateDir)):
+            errMesg = "Error: template directory " + templateDir + " does not exist"
+            print(errMesg)
+            sys.stderr.write(errMesg)
+            sys.exit(2)
       
         # define the environment variables required by output.stager
         hsmModuleFilesDir, hsmVersion = get_hsm_info()
         argDict["hsmModuleFilesDir"] = hsmModuleFilesDir
         argDict["hsmVersion"] = hsmVersion
         xferToolModuleFilesDir, xferToolVersion = get_gcp_info()
-        argDict["xferToolModuleFilesDir" = xferToolModuleFilesDir 
-        argDict["xferToolVersion" = xferToolVersion
+        argDict["xferToolModuleFilesDir"] = xferToolModuleFilesDir 
+        argDict["xferToolVersion"] = xferToolVersion
         argDict["freCommandsVersion"] = get_fre_version()
         user=os.getenv('USER')
         argDict["ptmpDir"] = os.path.join("/lustre/f2/scratch",user,"ptmp")
-        argDict["archDir"] = os.path.join("/lustre/f2/scratch",user,expName,"archive"
-        argDict["archiveDirRemote"] = os.path.join(args.destDir,args.expName)
-    
-#/runoutputStagerSavePartition = ldtn)
+        argDict["archDir"] = os.path.join("/lustre/f2/scratch",user,args.expName,"archive")
+        argDict["archiveDirRemote"] = os.path.join(args.outputDirRemote,args.expName)
+        argDict["mppnccombineOptString"] = '-64 -h 16384 -m'
         
+        sourcePath = os.path.join(args.workDir)
         for ftype in args.fileType:
-            try: 
-                ftype == 'ascii' or ftype == 'restart' or ftype == 'history'
-            except ValueError:
-                print('Invalid fileType value. Must be `history`, `ascii`, or `restart`')
-                
-            sourcePath = os.path.join(args.workDir,ftype)
             try:
                 os.path.exists(sourcePath)
             except NotADirectoryError:
                 print ('Error: directory',sourcePath,'does not exist.')
-
-            A=argFile(ftype, templateDir)
+            # instantiate a new argfile in the sourcePath directory
+            A=argFile(ftype, sourcePath)
             # get the file appendix
-            fileNameParts=A.split('.')
+            fileNameParts=A.newFileLocation.split('/')
+            fileNameAppendix=""
             for f in fileNameParts:
                 if 'tmp' in f:
-                    fileNameAppendix=f
-                    break
-            argDict["saveOptions"] = "(--mail-type=fail --chdir=/lustre/f2/dev/" + user + "/" + args.ExpName +\
-                                 "run/stdout --output=/lustre/f2/dev/"+user+"/" + args.ExpName + "run/stdout/%x.o%j" +\
-                                 " --clusters=es --partition=ldtn --account=" + groupAccount +\
-                                 " --job---name=" + expName + ".output.stager." + fileNameAppendix + ".AS" +\
-                                 " --time=8:00:00 --mincpus=01"
+                    for i in f.split('.'):
+                        if 'tmp' in f:
+                           fileNameAppendix=f
+                           break
+            argDict["saveOptions"] = "(--mail-type=fail --chdir=/lustre/f2/dev/" + user + "/" + args.expName +\
+                                 "run/stdout --output=/lustre/f2/dev/" + user + "/" + args.expName + "run/stdout/%x.o%j" +\
+                                 " --clusters=es --partition=ldtn --account=" + args.groupAccount +\
+                                 " --job---name=" + args.expName + ".output.stager." + fileNameAppendix + ".AS" +\
+                                 " --time=8:00:00 --mincpus=01)"
 
+            argDict["xferOptions"] = "(--mail-type=fail --chdir=/lustre/f2/dev/" + user + "/" + args.expName +\
+                                 "run/stdout --output=/lustre/f2/dev/" + user + "/" + args.expName + "run/stdout/%x.o%j" +\
+                                 " --clusters=es --partition=rdtn --account=" + args.groupAccount +\
+                                 " --job---name=" + args.expName + ".output.stager." + fileNameAppendix + ".AT" +\
+                                 " --time=16:00:00 --mincpus=01)"
             os.chdir(sourcePath)
         
             # clean out argFiles from the working directory
-            clean_dir(os.path.split(A.newFileLocation)[0],['*.args*'])
+            if os.path.isdir(os.path.join(sourcePath,ftype)):
+                clean_dir(os.path.join(sourcePath,ftype),['*.args*'])
             # copy the template file to the working directory
             copy_file(A.templateLocation,A.newFileLocation)
             # write values in the argDict to the argFile
             write_file(A.newFileLocation,"w",**argDict)
-        
+            
+            del A
+            os.chdir(homeDir)
     # these arguments are intended for use with the fre workflow, and should be modified by fre developers as needed
     elif args.defCategory == 'freDefs':
         print('Parsing freDefs')
@@ -688,10 +699,6 @@ def main():
                 argDict[a] = getattr(args,a)
             #print('hello',str(argDict[a]))
         for ftype in args.fileType:
-            try: 
-                ftype == 'ascii' or ftype == 'restart' or ftype == 'history'
-            except ValueError:
-                print('Invalid fileType value. Must be `history`, `ascii`, or `restart`')
                 
             sourcePath = os.path.join(args.workDir,ftype)
             try:
