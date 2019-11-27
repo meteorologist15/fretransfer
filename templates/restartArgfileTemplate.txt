@@ -1,6 +1,6 @@
-set expName                   = 
+set expName                   = ""
 set type                      = restart
-set stagingType               =   
+set stagingType               = ""  
 set actionCombineOn           = 0
 set actionCheckOn             = 0
 set actionSaveOn              = 1
@@ -11,10 +11,10 @@ set paramPtmpOn               = 0
 set paramCheckSumOn           = 0
 set paramCompressOn           = 0
 set paramVerbosityOn          = 0
-set workDir                   = 
-set ptmpDir                   = 
-set archDir                   = 
-set outputDirRemote           = 
+set workDir                   = ""
+set ptmpDir                   = ""
+set archDir                   = ""
+set outputDirRemote           = ""
 set saveOptions               = ()
 set xferOptions               = ()
 set saveRetries               = 4
@@ -22,13 +22,13 @@ set xferRetries               = 4
 set saveRetry                 = 0
 set xferRetry                 = 0
 set freCommandsModuleFilesDir = /ncrc/home2/fms/local/modulefiles
-set freCommandsVersion        =  
-set hsmModuleFilesDir         =  
-set hsmVersion                =  
-set xferToolModuleFilesDir    =  
-set xferToolVersion           =  
+set freCommandsVersion        = "" 
+set hsmModuleFilesDir         = "" 
+set hsmVersion                = "" 
+set xferToolModuleFilesDir    = ""
+set xferToolVersion           = "" 
 set modulesHomeDir            = /opt/modules/default
-set mppnccombineOptString     = 
+set mppnccombineOptString     = ""
 
 setenv FRE_HSM_TEST_VERSION $FRE_HSM_TEST_VERSION
 setenv FRE_GCP_TEST_VERSION $FRE_GCP_TEST_VERSION
