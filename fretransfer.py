@@ -53,7 +53,7 @@ class argFile(argFileTemplate):
     @staticmethod
     def new_file(self,rootFilePath):
         fileName = argFile.get_new_file_name(self)
-        return os.path.join(rootFilePath, self.fileType, fileName)
+        return os.path.join(rootFilePath, fileName)
     
     @staticmethod
     def get_new_file_name(self):
@@ -157,7 +157,8 @@ def pexec(arg,*args):
         argList.append(''.join(a)) 
     #print(argList)
     return subprocess.Popen(argList, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
+    #return subprocess.run(arglist, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+   
 # determine the location of the host machine
 def get_host_name():
     hostName=os.environ['HOST']
@@ -302,8 +303,8 @@ def parse_args():
                         type=str, 
                         default='',
                         required=True,
-                        dest = 'workDir',
-                        help='Working directory with ASCII, RESTART, and/or HISTORY sub-directories that contain the \
+                        dest = 'sourceDir',
+                        help='Directory with ASCII, RESTART, and/or HISTORY sub-directories that contain the \
                         ascii, history, and restart files generated during a model simulation.')
     parser_userDef.add_argument('-destDir',
                         type=str,
@@ -355,11 +356,11 @@ def parse_args():
                         History files containing the following patterns are transferred by default,\
                          "^rregion",".nc.",".ww3$" ')
     parser_userDef.add_argument('-stagingType',
-                        choices=['chained','online'],
+                        choices=['Chained','Online'],
                         type = str,
                         action='store',
-                        default='chained',
-                        help='output staging type. Default is "chained".')
+                        default='Chained',
+                        help='output staging type. Default is "Chained".')
     parser_userDef.add_argument('-gridSpecFile',
                         type = str,
                         dest = 'gridSpec',
@@ -377,8 +378,8 @@ def parse_args():
                         type=str, 
                         default='',
                         required=True,
-                        dest = 'workDir',
-                        help='Working directory with ASCII, RESTART, and/or HISTORY sub-directories that contain the \
+                        dest = 'sourceDir',
+                        help='Directory with ASCII, RESTART, and/or HISTORY sub-directories that contain the \
                         ascii, history, and restart files generated during a model simulation.')
     parser_frerun.add_argument('-archDir', 
                                action='store',
@@ -621,8 +622,22 @@ def parse_args():
 def main():
     # parse the arguments
     args = parse_args()
-    # set up argFiles with user-defined options
-  
+   
+    # get the output.stager command
+    p1 = subprocess.run(["which", "output.stager"],stdout=subprocess.PIPE, universal_newlines=True)
+    outputStager = p1.stdout.rstrip()
+    #print(outputStager)
+
+    # directory with the templates; assumes you are in the fretransfer repo directory
+    homeDir = os.getcwd()
+    templateDir = os.path.join(homeDir, "templates")
+    if (not os.path.exists(templateDir)):
+        errMesg = "Error: template directory " + templateDir + " does not exist"
+        print(errMesg)
+        sys.stderr.write(errMesg)
+        sys.exit(2)
+
+    # create argFiles with user-defined options
     if args.defCategory == 'userDefs':
         print('Parsing Userdefs')
     
@@ -631,15 +646,6 @@ def main():
         for a in vars(args):
             argDict[a] = getattr(args,a)
            # print(argDict[a])
-        homeDir = os.getcwd()
-        # directory with the templates; assumes you are in the fretransfer repo directory
-        templateDir = os.path.join(homeDir, "templates")
-        if (not os.path.exists(templateDir)):
-            errMesg = "Error: template directory " + templateDir + " does not exist"
-            print(errMesg)
-            sys.stderr.write(errMesg)
-            sys.exit(2)
-      
         # define the environment variables required by output.stager
         hsmModuleFilesDir, hsmVersion = get_hsm_info()
         argDict["hsmModuleFilesDir"] = hsmModuleFilesDir
@@ -650,13 +656,11 @@ def main():
         argDict["freCommandsVersion"] = get_fre_version()
         user=os.getenv('USER')
         argDict["ptmpDir"] = os.path.join("/lustre/f2/scratch",user,"ptmp")
-        argDict["archDir"] = os.path.join("/lustre/f2/scratch",user,args.expName,"archive")
-        argDict["archiveDirRemote"] = os.path.join(args.outputDirRemote,args.expName)
         argDict["mppnccombineOptString"] = '-64 -h 16384 -m'
         if args.gridSpec == None:
             argDict["gridSpec"] = '()'
         
-        sourcePath = os.path.join(args.workDir)
+        sourcePath = os.path.join(args.sourceDir)
         for ftype in args.fileType:
             try:
                 os.path.exists(sourcePath)
@@ -684,15 +688,36 @@ def main():
                                  "/run/stdout/%x.o%j --clusters=es --partition=rdtn --account=" + args.groupAccount +\
                                  " --job---name=" + args.expName + ".output.stager." + fileNameAppendix + ".AT" +\
                                  " --time=16:00:00 --mincpus=01)"
+
+            argDict["workDir"] = args.sourceDir/output.stager
+            if not os.path.isdir(argDict["workDir"]):
+                os.makedirs(argDict["workDir"])
+  
+            argDict["archDir"] = os.pathftype.upper()
+            #
+            if not os.path.isdir(argDict["archDir"]):
+                os.makedirs(argDict["archDir"])
+            
+                
+            argDict["outputDirRemote"] = os.path.join(args.outputDirRemote,args.expName,ftype.upper())
             os.chdir(sourcePath)
         
             # clean out argFiles from the working directory
-            if os.path.isdir(os.path.join(sourcePath,ftype)):
-                clean_dir(os.path.join(sourcePath,ftype),['*.args*'])
+            if os.path.isdir(os.path.join(sourcePath,ftype.upper())):
+                clean_dir(os.path.join(sourcePath,ftype.upper()),['*.args*'])
             # copy the template file to the working directory
             copy_file(A.templateLocation,A.newFileLocation)
             # write values in the argDict to the argFile
             write_file(A.newFileLocation,"w",**argDict)
+            
+            # call output.stager
+            p=pexec(outputStager, A.newFileLocation)
+            sys.stdout.flush()
+            for line in iter(p.stdout.readline, b''):
+                sys.stdout.flush()
+                # convert the byte object to a string
+                lineStr = line.decode()
+                print(lineStr)
             
             del A
             os.chdir(homeDir)
