@@ -1,5 +1,5 @@
 set expName                   =
-set type                      =   history
+set type                      = history
 set stagingType               =   
 set actionCombineOn           = 0 
 set actionCheckOn             = 0  
@@ -23,21 +23,21 @@ set saveRetries               = 4
 set xferRetries               = 4
 set saveRetry                 = 0
 set xferRetry                 = 0
-set xmlFiles                  =
-set xmlFilesRemote            =
-set includeDir                =
-set includeDirRemote          =
-set ppStarterOptions          =
-set stdoutDirRemote           =
-set freCommandsModuleFilesDir =
+set xmlFiles                  = ()
+set xmlFilesRemote            = ()
+set includeDir                = ()
+set includeDirRemote          = ()
+set ppStarterOptions          = ()
+set stdoutDirRemote           = ()
+set freCommandsModuleFilesDir = /ncrc/home2/fms/local/modulefiles
 set freCommandsVersion        =
 set hsmModuleFilesDir         =
 set hsmVersion                =
 set xferToolModuleFilesDir    =
 set xferToolVersion           =
-set modulesHomeDir            =
+set modulesHomeDir            = /opt/modules/default
 set mppnccombineOptString     =
-set gridSpec                  =
+set gridSpec                  = ()
 
 setenv FRE_HSM_TEST_VERSION
 setenv FRE_GCP_TEST_VERSION

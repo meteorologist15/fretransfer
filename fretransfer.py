@@ -175,16 +175,18 @@ def get_fre_dir():
         freDir = '/home/fms/local/opt/fre-commands/' + freVersion + '/site/gfdl-ws'
     elif 'gaea' in hostName:
         freDir = '/ncrc/home2/fms/local/opt/fre-commands/'  + freVersion + '/site/ncrc_common'
-    elif 'theia' in hostName:
-        freDir = '/home/fms/local/opt/fre-commands/' + freVersion +  '/site/theia' 
         
     return freDir
 
 # return the fre module file version currently loaded in the environment
 def get_fre_version():
     moduleVersion=os.environ['MODULE_VERSION']
-   
-    moduleCmd='/usr/local/Modules/' + moduleVersion + '/bin/modulecmd'
+    hostName = get_host_name()
+    if 'gfdl.noaa.gov' in hostName:
+        moduleCmd = '/usr/local/Modules/' + moduleVersion + '/bin/modulecmd'
+    elif 'gaea' in hostName:
+        moduleCmd = '/opt/cray/pe/modules/' + moduleVersion + '/bin/modulecmd'
+    
     #print(moduleCmd)
     p=pexec(moduleCmd,"tcsh", "list")
     # Read stdout and print each new line
@@ -358,8 +360,11 @@ def parse_args():
                         action='store',
                         default='chained',
                         help='output staging type. Default is "chained".')
-    
- 
+    parser_userDef.add_argument('-gridSpecFile',
+                        type = str,
+                        dest = 'gridSpec',
+                        help='full path to the gridSpec file')
+
     # sub-parser for shell variables set by frerun
 
     parser_frerun = subparsers.add_parser('freDefs', help='Shell variables set by `frerun`.')
@@ -472,7 +477,7 @@ def parse_args():
                                default='',
                                type = str,
                                required = False,
-                               help='Name of the gridSpec file')
+                               help='Full path to the gridSpec file')
     parser_frerun.add_argument('-actionRetryOn', 
                                action='store',
                                default=0,
@@ -648,6 +653,8 @@ def main():
         argDict["archDir"] = os.path.join("/lustre/f2/scratch",user,args.expName,"archive")
         argDict["archiveDirRemote"] = os.path.join(args.outputDirRemote,args.expName)
         argDict["mppnccombineOptString"] = '-64 -h 16384 -m'
+        if args.gridSpec == None:
+            argDict["gridSpec"] = '()'
         
         sourcePath = os.path.join(args.workDir)
         for ftype in args.fileType:
@@ -667,14 +674,14 @@ def main():
                            fileNameAppendix=f
                            break
             argDict["saveOptions"] = "(--mail-type=fail --chdir=/lustre/f2/dev/" + user + "/" + args.expName +\
-                                 "run/stdout --output=/lustre/f2/dev/" + user + "/" + args.expName + "run/stdout/%x.o%j" +\
-                                 " --clusters=es --partition=ldtn --account=" + args.groupAccount +\
+                                 "/run/stdout --output=/lustre/f2/dev/" + user + "/" + args.expName +\
+                                 "/run/stdout/%x.o%j --clusters=es --partition=ldtn --account=" + args.groupAccount +\
                                  " --job---name=" + args.expName + ".output.stager." + fileNameAppendix + ".AS" +\
                                  " --time=8:00:00 --mincpus=01)"
 
             argDict["xferOptions"] = "(--mail-type=fail --chdir=/lustre/f2/dev/" + user + "/" + args.expName +\
-                                 "run/stdout --output=/lustre/f2/dev/" + user + "/" + args.expName + "run/stdout/%x.o%j" +\
-                                 " --clusters=es --partition=rdtn --account=" + args.groupAccount +\
+                                 "/run/stdout --output=/lustre/f2/dev/" + user + "/" + args.expName +\
+                                 "/run/stdout/%x.o%j --clusters=es --partition=rdtn --account=" + args.groupAccount +\
                                  " --job---name=" + args.expName + ".output.stager." + fileNameAppendix + ".AT" +\
                                  " --time=16:00:00 --mincpus=01)"
             os.chdir(sourcePath)
