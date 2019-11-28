@@ -38,23 +38,20 @@ class argFileTemplate:
 class argFile(argFileTemplate):
  
     def __init__(self, fileType, newFilePath,*args):
-       filePatterns = []
-       argFileTemplate.__init__(self,fileType)
-       # get the full path of new argFile 
-       self.newFileLocation = argFile.new_file(self,newFilePath)
-       
-     
-       # get list of files to process
-       argFile.get_file_list(self,self.fileType,filePatterns)
-     
-    
-    # each new file has a rootFilePath set to None by default    
+        filePatterns = []
+        argFileTemplate.__init__(self,fileType)
+        # get the full path of new argFile 
+        self.newFileLocation = argFile.new_file(self,newFilePath)
+        # get list of files to process
+        argFile.get_file_list(self,self.fileType,filePatterns)
+
+    # each new file has a rootFilePath set to None by default
     # the new file is placed in {newFilePath}/{fileType}
     @staticmethod
     def new_file(self,rootFilePath):
         fileName = argFile.get_new_file_name(self)
         return os.path.join(rootFilePath, fileName)
-    
+
     @staticmethod
     def get_new_file_name(self):
         fileNameRoot = 'output.stager.'
@@ -92,7 +89,7 @@ def write_file(filePath,fileStatus="",**kwargs):
         print("Error: fileStatus must be `w` or `a`")
            
     shutil.copy(filePath, filePath+"~" )
-    print(filePath)
+    print("Writing the argfile " + filePath)
     # read in lines from the temporary sourceFile
     fileName = filePath+"~"
     with open(fileName) as f: 
@@ -198,13 +195,14 @@ def get_fre_version():
         lineStr = line.decode()
         # search for the fre version
         if 'bronx-' in lineStr:
-           useline = lineStr.strip()
-           searchResult=re.search(r'(?<=fre/)\S*',lineStr)
-           freVersion = searchResult.group(0)
-           #print('Using fre/' + freVersion.strip())
-           break
+            useline = lineStr.strip()
+            searchResult=re.search(r'(?<=fre/)\S*',lineStr)
+            freVersion = searchResult.group(0)
+            #print('Using fre/' + freVersion.strip())
+            break
     
     return freVersion
+
 # create a time stamp to append to the temporary argFiles and directory.
 def get_time_stamp(*args):
     #print(args)
@@ -667,10 +665,10 @@ def main():
             except NotADirectoryError:
                 print ('Error: directory',sourcePath,'does not exist.')
             # instantiate a new argfile in the sourcePath directory
-            A=argFile(ftype, sourcePath)
+            A = argFile(ftype, sourcePath)
             # get the file appendix
-            fileNameParts=A.newFileLocation.split('/')
-            fileNameAppendix=""
+            fileNameParts = A.newFileLocation.split('/')
+            fileNameAppendix = ""
             for f in fileNameParts:
                 if 'tmp' in f:
                     for i in f.split('.'):
@@ -689,28 +687,22 @@ def main():
                                  " --job---name=" + args.expName + ".output.stager." + fileNameAppendix + ".AT" +\
                                  " --time=16:00:00 --mincpus=01)"
 
-            argDict["workDir"] = args.sourceDir/output.stager
-            if not os.path.isdir(argDict["workDir"]):
-                os.makedirs(argDict["workDir"])
-  
-            argDict["archDir"] = os.pathftype.upper()
-            #
-            if not os.path.isdir(argDict["archDir"]):
-                os.makedirs(argDict["archDir"])
-            
+            argDict["workDir"] = args.sourceDir
+
+            # output.stager processes files in workDir/archDir
+            argDict["archDir"] = ftype.upper()
                 
             argDict["outputDirRemote"] = os.path.join(args.outputDirRemote,args.expName,ftype.upper())
             os.chdir(sourcePath)
         
             # clean out argFiles from the working directory
-            if os.path.isdir(os.path.join(sourcePath,ftype.upper())):
-                clean_dir(os.path.join(sourcePath,ftype.upper()),['*.args*'])
+            clean_dir(sourcePath,['*.args*'])
             # copy the template file to the working directory
             copy_file(A.templateLocation,A.newFileLocation)
             # write values in the argDict to the argFile
             write_file(A.newFileLocation,"w",**argDict)
             
-            # call output.stager
+            # call output.stager and print the stdout log
             p=pexec(outputStager, A.newFileLocation)
             sys.stdout.flush()
             for line in iter(p.stdout.readline, b''):
@@ -718,7 +710,8 @@ def main():
                 # convert the byte object to a string
                 lineStr = line.decode()
                 print(lineStr)
-            
+
+            # delete the argFile instance
             del A
             os.chdir(homeDir)
     # these arguments are intended for use with the fre workflow, and should be modified by fre developers as needed

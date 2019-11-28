@@ -6,8 +6,12 @@
  #-sourceDir ${PWD}/test_dev -destDir /archive/${USER} -destMach gfdl \
  #-groupAccount gfdl_f
 
-workDir=/lustre/f2/scratch/${USER}/work/master_mom6_2019.11.27_dev_gfdl/mom6_solo_global_ALE_z_1x0m2d_36pe.o268566271
-tmpOutputDir=${workDir}/output.stager
+cwd=${PWD}
+
+alias fretransfer='python3 ${HOME}/fretransfer/fretransfer.py'
+
+workDir=/lustre/f2/scratch/${USER}/work/master_mom6_2019.11.28_dev_gfdl/mom6_solo_global_ALE_z_1x0m1d_36pe.o268566607
+tmpOutputDir=/lustre/f2/scratch/${USER}/tmp/test_fretransfer/output.stager
 
 pushd $workDir
 
@@ -21,7 +25,9 @@ fi
 
 cd RESTART
 ls -1 | egrep "${patternGrepRestart}" | xargs ln --force --target-directory=${restartWorkDir}
- 
 
-python3 fretransfer.py userDefs -expName test_fretransfer -fileType restart \
--sourceDir ${workDir} -destDir /archive/${USER} -destMach gfdl -groupAccount gfdl_f
+popd
+cd ${cwd}
+
+fretransfer userDefs -expName test_fretransfer -fileType restart \
+-sourceDir ${tmpOutputDir} -destDir /archive/${USER} -destMach gfdl -groupAccount gfdl_f
