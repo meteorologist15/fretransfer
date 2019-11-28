@@ -12,6 +12,7 @@ This repository contains fretransfer scripts that generate argument files (``arg
   * shutil
   * subprocess
   * sys
+* supported version of fre
 # Quickstart
 1. open a terminal and clone the repository  
    `git clone git@github.com:wrongkindofdoctor/fretransfer.git` or  
@@ -20,6 +21,7 @@ This repository contains fretransfer scripts that generate argument files (``arg
    *assumes that the binary command for python v3.x is aliased to `python3`
 3. To run fretransfer on history files with required arguments:  
    ```
+   module load fre/bronx-<latest version number>
    python3 fretransfer.py userDefs -expName mom6_solo_global_ALE_z -fileType history    
    -sourceDir /home/sourceDirectory -destDir /archive/Firstname.Lastname -destMach gfdl -groupAccount gfdl_<your group letter>
    ```
