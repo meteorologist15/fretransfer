@@ -55,11 +55,11 @@ class argFile:
        """
        self.fileType = fileType
 
-       if os.path.isfile(templates[fileType])
+       if os.path.isfile(templates[fileType]):
            self.templateName = templates[templates.index(fileType)]
            self.templateLocation = templates[fileType]
        else:
-           raise FileNotFoundError("The %s template file %s does not exist." % (fileType, templates[fileType])
+           raise FileNotFoundError("The %s template file %s does not exist." % (fileType, templates[fileType]))
 
        filePatterns = []
        # get the full path of new argFile 
@@ -190,7 +190,7 @@ def write_file(filePath, fileStatus = "", **kwargs):
                 break
               
     # write values to argFile
-    with open(filePath, fileStatus) as j
+    with open(filePath, fileStatus) as j:
         for line in lines:
             if len(line.strip()) > 0:
                 j.write(line + "\n")
@@ -499,22 +499,22 @@ def main():
     if args.defCategory == 'userDefs':
         logging.info('Parsing Userdefs')
     
-    argDict = {}
-    for a in vars(args):
-        argDict[a] = getattr(args, a)
+        argDict = {}
+        for a in vars(args):
+            argDict[a] = getattr(args, a)
     
-    for ftype in args.fileType:
-        sourcePath = get_sourcepath(args, ftype)
+        for ftype in args.fileType:
+            sourcePath = get_sourcepath(args, ftype)
       
-        #A = argFile(ftype,'/home/Jessica.Liptak/temp')
-        A = argFile(ftype, '/home/Kristopher.Rand/foo_test_dir')
+            #A = argFile(ftype,'/home/Jessica.Liptak/temp')
+            A = argFile(ftype, '/home/Kristopher.Rand/foo_test_dir')
         
-        # clean out argFiles from the working directory
-        clean_dir(os.path.split(A.newFileLocation)[0], ['*.args*'])
-        # copy the template file to the working directory
-        copy_file(A.templateLocation, A.newFileLocation)
-        # write values in the argDict to the argFile
-        write_file(A.newFileLocation, "w", **argDict)
+            # clean out argFiles from the working directory
+            clean_dir(os.path.split(A.newFileLocation)[0], ['*.args*'])
+            # copy the template file to the working directory
+            copy_file(A.templateLocation, A.newFileLocation)
+            # write values in the argDict to the argFile
+            write_file(A.newFileLocation, "w", **argDict)
         
     elif args.defCategory == 'freDefs':
 
