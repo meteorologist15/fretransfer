@@ -21,7 +21,7 @@ fretransfer_dir = "/home/Kristopher.Rand/git/fretransfer/templates/"
 template_names = ["historyArgfileTemplate.txt", "restartArgfileTemplate.txt", 
                   "asciiArgfileTemplate.txt"]
 argFile_types = ["history", "restart", "ascii"]
-template_locs = {k:fretransfer_dir + v for (k,v) in zip(argFile_types, template_names)}
+templates = {k:fretransfer_dir + v for (k,v) in zip(argFile_types, template_names)}
 
 freRunArgCfg = "/home/Kristopher.Rand/git/fretransfer/freRunArgs.cfg"
 freDefArgCfg = "/home/Kristopher.Rand/git/fretransfer/freDefArgs.cfg"
@@ -29,7 +29,10 @@ freDefArgCfg = "/home/Kristopher.Rand/git/fretransfer/freDefArgs.cfg"
 config_userDefs = configparser.ConfigParser()
 config_frerun = configparser.ConfigParser()
 
- 
+logging_format = logging_format = '%(levelname)s: %(message)s'
+logging.basicConfig(level=logging.INFO, format=logging_format)
+
+
 # Class for argFile to create with a template   
 class argFile:
     """
@@ -56,7 +59,7 @@ class argFile:
        self.fileType = fileType
 
        if os.path.isfile(templates[fileType]):
-           self.templateName = templates[templates.index(fileType)]
+           #self.templateName = templates[templates.index(fileType)]
            self.templateLocation = templates[fileType]
        else:
            raise FileNotFoundError("The %s template file %s does not exist." % (fileType, templates[fileType]))
@@ -147,8 +150,7 @@ class argFile:
         self.fileList = multi_filter(names, patternMatch)
 
 
-# write the data to the file
-def write_file(filePath, fileStatus = "", **kwargs):
+def write_file(filePath, fileStatus="", **kwargs):
     """
     Write out the values of all the arguments listed in the temporary file
     to the new .args file
@@ -161,8 +163,10 @@ def write_file(filePath, fileStatus = "", **kwargs):
     - None
 
     """
-    if fileStatus != "w" or fileStatus != "a":
-        raise ValueError("fileStatus must be 'w' or 'a'")
+
+    if fileStatus != "w": 
+        if fileStatus != "a":
+            raise ValueError("fileStatus must be 'w' or 'a'")
            
     shutil.copy(filePath, filePath + "~" )
 
@@ -170,16 +174,9 @@ def write_file(filePath, fileStatus = "", **kwargs):
     with open(filePath + "~", "r") as h:
         lines = h.readlines()
 
-    #source = open(filePath + "~", "r" )
-    #lines = []
-    #for line in source:
-    #    #print(line)
-    #    lines.append(line)
-    #source.close()
-
     # replace lines with values if they exist
     for key, value in kwargs.items():
-        logging.info(key, str(value))
+        logging.info("%s %s" % (key, str(value)))
         for index, line in enumerate(lines):
             if key in line:
                 if 'setenv'in line:
@@ -418,7 +415,7 @@ def get_sourcepath(args, ftype):
     - The path to the source directory.
 
     """
-    if not (fype == 'ascii' or ftype == 'restart' or ftype == 'history'):
+    if not (ftype == 'ascii' or ftype == 'restart' or ftype == 'history'):
         raise ValueError("Invalid file type. Must be 'history', 'ascii', or 'restart'")
 
     sourcePath = os.path.join(args.workDir, ftype)
@@ -427,6 +424,33 @@ def get_sourcepath(args, ftype):
 
     os.chdir(sourcePath)
     return sourcePath
+
+
+def add_argparse_arguments(configparser_obj, argparse_obj):
+    """
+    Helper function that inserts individual "sections" of a config file
+    into an argparse object via its method "add_argument". It places
+    the key, value pairings of a section into a dictionary and unpacks
+    that dictionary into ArgumentParser.add_argument(). Special key, value
+    relationships containing Python reserved words must be maintained and
+    are demarcated by a preceding underscore (_) in the config file. These
+    are parsed via Python's 'eval' method after the underscore is removed.
+
+    Parameters (2):
+    - configparser_obj: An object from the configparser.ConfigParser() class
+    - argparse_obj: An object from the argparse.ArgumentParser() class
+
+    Returns (0):
+    - None
+
+    """
+    for section in configparser_obj.sections():
+        arg_dict = dict(configparser_obj[section])
+        for key, value in arg_dict.items():
+            if '_' in value:
+                arg_dict[key] = eval(value.replace('_', ''))
+        
+        argparse_obj.add_argument(section, **arg_dict)
 
      
 def parse_args():
@@ -454,25 +478,24 @@ def parse_args():
     # sub-parser for user-defined options
     parser_userDef = subparsers.add_parser('userDefs', help='User-defined options')
 
+    if not os.path.exists(freDefArgCfg):
+        raise FileNotFoundError("The configuration file for 'freDefs' arguments does not exist")
+
     with open(freDefArgCfg, 'r') as f:
         config_userDefs.read_file(f)
     
-    for config_userDef_section in config_userDefs.sections():
-       userDef_arg_dict = dict(config_userDefs[config_userDef_section])
-       parser_userDef.add_argument(config_userDef_section, **userDef_arg_dict) 
-
+    add_argparse_arguments(config_userDefs, parser_userDef)
 
     # sub-parser for shell variables set by frerun
-
     parser_frerun = subparsers.add_parser('freDefs', help='Shell variables set by `frerun`.')
+
+    if not os.path.exists(freRunArgCfg):
+        raise FileNotFoundError("The configuration file for 'frerun' arguments does not exist.")
 
     with open(freRunArgCfg, 'r') as g:
         config_frerun.read_file(g)
-        
-    for frerun_config_section in config_frerun.sections():
-        frerun_arg_dict = dict(config_frerun[frerun_config_section])
-        parser_frerun.add_argument(frerun_config_section, **frerun_arg_dict)
 
+    add_argparse_arguments(config_frerun, parser_frerun)        
 
     args = parser.parse_args()
 
@@ -507,14 +530,14 @@ def main():
             sourcePath = get_sourcepath(args, ftype)
       
             #A = argFile(ftype,'/home/Jessica.Liptak/temp')
-            A = argFile(ftype, '/home/Kristopher.Rand/foo_test_dir')
+            A = argFile(ftype, '/home/Kristopher.Rand/foo_test_dir/fretransfer')
         
             # clean out argFiles from the working directory
             clean_dir(os.path.split(A.newFileLocation)[0], ['*.args*'])
             # copy the template file to the working directory
             copy_file(A.templateLocation, A.newFileLocation)
             # write values in the argDict to the argFile
-            write_file(A.newFileLocation, "w", **argDict)
+            write_file(A.newFileLocation, fileStatus="w", **argDict)
         
     elif args.defCategory == 'freDefs':
 
@@ -551,3 +574,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
