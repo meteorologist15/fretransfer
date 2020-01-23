@@ -30,13 +30,12 @@ class argFileTemplate:
         
     @staticmethod
     def get_template(filePath):
-        try:
-             os.path.isfile(filePath)
-        except FileNotFoundError:
-            logging.info("Template file not found")
-        
-        return filePath
-    
+        if os.path.isfile(filePath)
+            return filePath
+        else:
+            raise FileNotFoundError("Template file not found")
+   
+ 
 # Class for argFile to create with a template   
 class argFile(argFileTemplate):
  
@@ -89,12 +88,13 @@ class argFile(argFileTemplate):
 
 # write the data to the file
 def write_file(filePath,fileStatus="",**kwargs):
-    try:
-        fileStatus == "w" or fileStatus == "a"
-    except ValueError:
-        logging.info("Error: fileStatus must be `w` or `a`")
+
+    if fileStatus != "w":
+        if fileStatus != "a":
+            raise ValueError("Error: fileStatus must be 'w' or 'a'")
            
     shutil.copy(filePath, filePath+"~" )
+
     # read in lines from the temporary sourceFile
     source= open(filePath+"~", "r" )
     lines = []
@@ -148,11 +148,10 @@ def copy_file(srcPath,destPath):
         os.makedirs(pathParts[0])
         
     shutil.copyfile(srcPath,destPath)
-    try:
-        os.path.isfile(destPath)
-    except FileNotFoundError:
-        logging.info("Error: file",destPath ,"not created")
-    
+    if not os.path.isfile(destPath):
+        raise FileNotFoundError("File %s was not created" % destPath)
+   
+ 
 def pexec(arg,*args):
     argList = []
     argList.append(arg)
@@ -161,13 +160,17 @@ def pexec(arg,*args):
         argList.append(''.join(a)) 
     return subprocess.Popen(argList, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
+
 # determine the location of the host machine
 def get_host_name():
-    hostName=os.environ['HOST']
-    if  any([re.search(r, hostName) for r in ['gfdl.noaa.gov','gaea', 'theia']]):
+
+    hostName = os.environ['HOST']
+    if any([re.search(r, hostName) for r in ['gfdl.noaa.gov','gaea', 'theia']]):
         return hostName
     else:
-        sys.exit('Error: $HOST is not gfdl, gaea, or theia. Exiting.')
+        raise OSError('Error: $HOST is not gfdl, gaea, or theia. Exiting.')
+
+
 # determine the location of the Fre source code and corresponding argFile templates
 # assumes that argFile templates will be placed in the fre-commands directory on the host machine
 def get_fre_dir():
@@ -199,21 +202,20 @@ def get_fre_version():
            useline = lineStr.strip()
            searchResult=re.search(r'(?<=fre/)\S*',lineStr)
            freVersion = searchResult.group(0)
-           #print('Using fre/' + freVersion.strip())
+
            break
     
     return freVersion
 # create a time stamp to append to the temporary argFiles and directory.
 def get_time_stamp(*args):
-    #print(args)
+
     baseDir= get_fre_dir()
     
     cmd = os.path.join(baseDir.split("/site")[0],'sbin','time_stamp.csh')
-    try:
-        os.path.isfile(cmd)
-    except FileNotFoundError:
-        logging.info("time_stamp.csh not found in the fre root directory")
-    p = pexec(cmd,args)
+    if not os.path.isfile(cmd):
+        raise FileNotFoundError("time_stamp.csh not found in the fre root directory")
+
+    p = pexec(cmd, args)
     
      # Read stdout and print each new line
     sys.stdout.flush()
@@ -567,35 +569,39 @@ def parse_args():
     return args
     
 
+def get_sourcepath(args, ftype):
+
+    if not (ftype == 'ascii' or ftype == 'restart' or ftype == 'history'):
+        raise ValueError("Invalid file type. Must be 'history', 'ascii', or 'restart'")
+
+    sourcePath = os.path.join(args.workDir, ftype)
+    if not os.path.exists(sourcePath):
+        raise NotADirectoryError("Directory %s does not exist!" % sourcePath)
+
+    os.chdir(sourcePath)
+    return sourcePath
+
+
+
 # main program
 def main():
+
   # parse the arguments
-  args = parse_args()
+    args = parse_args()
   # set up argFiles with user-defined options
   
-  if args.defCategory == 'userDefs':
-    logging.info('Parsing Userdefs')
+    if args.defCategory == 'userDefs':
+        logging.info('Parsing Userdefs')
     
     # make a dictionary
     argDict = {}
     for a in vars(args):
-        argDict[a] = getattr(args,a)
+        argDict[a] = getattr(args, a)
     
     for ftype in args.fileType:
-        try: 
-            ftype == 'ascii' or ftype == 'restart' or ftype == 'history'
-        except ValueError:
-            logging.info('Invalid fileType value. Must be `history`, `ascii`, or `restart`')
-                
-        sourcePath = os.path.join(args.workDir,ftype)
-        try:
-            os.path.exists(sourcePath)
-        except NotADirectoryError:
-            logging.info('Error: directory',sourcePath,'does not exist.')
-                
-        os.chdir(sourcePath)
-      
-        A=argFile(ftype,'/home/Jessica.Liptak/temp')
+        sourcePath = get_sourcepath(args, ftype)
+
+        A = argFile(ftype,'/home/Jessica.Liptak/temp')
         
         # clean out argFiles from the working directory
         clean_dir(os.path.split(A.newFileLocation)[0],['*.args*'])
@@ -604,39 +610,29 @@ def main():
         # write values in the argDict to the argFile
         write_file(A.newFileLocation,"w",**argDict)
         
-  elif args.defCategory == 'freDefs':
-    logging.info('Parsing freDefs')
-     # make a dictionary
-    argDict = {}
-    for a in vars(args):
-        if a != 'fileType' and a != 'workDir':
-            argDict[a] = getattr(args,a)
-    for ftype in args.fileType:
-        try: 
-            ftype == 'ascii' or ftype == 'restart' or ftype == 'history'
-        except ValueError:
-            logging.error('Invalid fileType value. Must be `history`, `ascii`, or `restart`')
-                
-        sourcePath = os.path.join(args.workDir,ftype)
-        try:
-            os.path.exists(sourcePath)
-        except NotADirectoryError:
-            logging.error('Error: directory',sourcePath,'does not exist.')
-        
-        os.chdir(sourcePath)
-        # check that one argFile already exists in the working directory 
-        argFiles = [n for n in glob.glob('*.args') if os.path.isfile(n)]
-        try:
-            any(argFiles[0].strip())
-        except FileNotFoundError:
-            logging.error('Error: no',fType,'argFile found in',sourcePath)
-        try:
-            len(argFiles) == 1
-        except FileExistsError:
-            logging.error('Error: multiple',fType,'argFiles found in ',sourcePath)
-        # write the fre definitions to the existing argFile
-        filePath = os.path.join(sourcePath,argFiles[0])
-        write_file(filePath,"w",**argDict)
+    elif args.defCategory == 'freDefs':
+
+        logging.info('Parsing freDefs')
+        argDict = {}
+
+        for a in vars(args):
+            if a != 'fileType' and a != 'workDir':
+                argDict[a] = getattr(args, a)
+
+        for ftype in args.fileType:
+            sourcePath = get_sourcepath(args, ftype)
+
+            # check that one argFile already exists in the working directory 
+            argFiles = [n for n in glob.glob('*.args') if os.path.isfile(n)]
+
+            if len(argFiles) == 0:
+                raise FileNotFoundError("No %s argFile found in %s" % (ftype, sourcePath))
+            elif len(argFiles > 1):
+                raise FileExistsError("Multiple %s argFiles found in %s" % (ftype, sourcePath))
+
+            # write the fre definitions to the existing argFile
+            filePath = os.path.join(sourcePath, argFiles[0])
+            write_file(filePath, "w", **argDict)
             
         
 if __name__ == '__main__': 
