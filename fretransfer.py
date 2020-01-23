@@ -6,6 +6,7 @@
 ###########################################################################################
 import argparse
 import fnmatch
+import logging
 import glob
 import sys
 import os
@@ -13,6 +14,11 @@ import re
 import subprocess
 import shutil
 import datetime
+
+
+logging_format = logging_format = '%(levelname)s: %(message)s'
+logging.basicConfig(level=logging.INFO, format=logging_format)
+
 
 # Class for managing  argFile templates
 class argFileTemplate:
@@ -28,7 +34,7 @@ class argFileTemplate:
         try:
              os.path.isfile(filePath)
         except FileNotFoundError:
-            print("Template file not found")
+            logging.info("Template file not found")
         
         return filePath
     
@@ -87,7 +93,7 @@ def write_file(filePath,fileStatus="",**kwargs):
     try:
         fileStatus == "w" or fileStatus == "a"
     except ValueError:
-        print("Error: fileStatus must be `w` or `a`")
+        logging.info("Error: fileStatus must be `w` or `a`")
            
     shutil.copy(filePath, filePath+"~" )
     # read in lines from the temporary sourceFile
@@ -99,7 +105,7 @@ def write_file(filePath,fileStatus="",**kwargs):
     source.close()
     # replace lines with values if they exist
     for key, value in kwargs.items():
-        print(key, str(value))
+        logging.info(key, str(value))
         for index,line in enumerate(lines):
             if key in line:
                 if 'setenv'in line:
@@ -148,7 +154,7 @@ def copy_file(srcPath,destPath):
     try:
         os.path.isfile(destPath)
     except FileNotFoundError:
-        print("Error: file",destPath ,"not created")
+        logging.info("Error: file",destPath ,"not created")
     
 def pexec(arg,*args):
     argList = []
@@ -212,7 +218,7 @@ def get_time_stamp(*args):
     try:
         os.path.isfile(cmd)
     except FileNotFoundError:
-        print("time_stamp.csh not found in the fre root directory")
+        logging.info("time_stamp.csh not found in the fre root directory")
     p = pexec(cmd,args)
     
      # Read stdout and print each new line
@@ -575,7 +581,7 @@ def main():
   # set up argFiles with user-defined options
   
   if args.defCategory == 'userDefs':
-    print('Parsing Userdefs')
+    logging.info('Parsing Userdefs')
     
     # make a dictionary
     argDict = {}
@@ -586,13 +592,13 @@ def main():
         try: 
             ftype == 'ascii' or ftype == 'restart' or ftype == 'history'
         except ValueError:
-            print('Invalid fileType value. Must be `history`, `ascii`, or `restart`')
+            logging.info('Invalid fileType value. Must be `history`, `ascii`, or `restart`')
                 
         sourcePath = os.path.join(args.workDir,ftype)
         try:
             os.path.exists(sourcePath)
         except NotADirectoryError:
-            print ('Error: directory',sourcePath,'does not exist.')
+            logging.info('Error: directory',sourcePath,'does not exist.')
                 
         os.chdir(sourcePath)
       
@@ -606,7 +612,7 @@ def main():
         write_file(A.newFileLocation,"w",**argDict)
         
   elif args.defCategory == 'freDefs':
-    print('Parsing freDefs')
+    logging.info('Parsing freDefs')
      # make a dictionary
     argDict = {}
     for a in vars(args):
@@ -617,13 +623,13 @@ def main():
         try: 
             ftype == 'ascii' or ftype == 'restart' or ftype == 'history'
         except ValueError:
-            print('Invalid fileType value. Must be `history`, `ascii`, or `restart`')
+            logging.error('Invalid fileType value. Must be `history`, `ascii`, or `restart`')
                 
         sourcePath = os.path.join(args.workDir,ftype)
         try:
             os.path.exists(sourcePath)
         except NotADirectoryError:
-            print ('Error: directory',sourcePath,'does not exist.')
+            logging.error('Error: directory',sourcePath,'does not exist.')
         
         os.chdir(sourcePath)
         # check that one argFile already exists in the working directory 
@@ -631,11 +637,11 @@ def main():
         try:
             any(argFiles[0].strip())
         except FileNotFoundError:
-            print('Error: no',fType,'argFile found in',sourcePath)
+            logging.error('Error: no',fType,'argFile found in',sourcePath)
         try:
             len(argFiles) == 1
         except FileExistsError:
-            print('Error: multiple',fType,'argFiles found in ',sourcePath)
+            logging.error('Error: multiple',fType,'argFiles found in ',sourcePath)
         # write the fre definitions to the existing argFile
         filePath = os.path.join(sourcePath,argFiles[0])
         write_file(filePath,"w",**argDict)
