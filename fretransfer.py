@@ -103,37 +103,32 @@ def write_file(filePath, fileStatus="", **kwargs):
 
     if fileStatus != "w":
         if fileStatus != "a":
-            raise ValueError("Error: fileStatus must be 'w' or 'a'")
+            raise ValueError("fileStatus must be 'w' or 'a'")
            
     shutil.copy(filePath, filePath + "~" )
 
     # read in lines from the temporary sourceFile
-    source = open(filePath + "~", "r" )
-    lines = []
-
-    for line in source:
-        lines.append(line)
-
-    source.close()
+    with open(filePath + "~", "r") as h:
+        lines = h.readlines()
 
     # replace lines with values if they exist
     for key, value in kwargs.items():
-        logging.info(key, str(value))
-        for index,line in enumerate(lines):
+        logging.info("%s %s" % (key, str(value)))
+        for index, line in enumerate(lines):
             if key in line:
                 if 'setenv'in line:
                     lines[index] = 'setenv ' + key + '' + str(value)
                 else:
                     lines[index] = 'set ' + key + ' = ' + str(value)
+
                 break
               
     # write values to argFile
-    destination = open(filePath, fileStatus)
-    for line in lines:
-        if len(line.strip()) > 0:
-            destination.write(line + '\n')       
-    
-    destination.close()
+    with open(filePath, fileStatus) as j:
+        for line in lines:
+            if len(line.strip()) > 0:
+                j.write(line + "\n")
+
     # remove the temporary file
     filePathParts = os.path.split(filePath)
     clean_dir(filePathParts[0], [filePathParts[1] + '~'])
@@ -179,7 +174,7 @@ def pexec(arg, *args):
     for a in args:
         argList.append(''.join(a)) 
 
-    return subprocess.Popen(argList, stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
+    return subprocess.Popen(argList, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
 
 # determine the location of the host machine
