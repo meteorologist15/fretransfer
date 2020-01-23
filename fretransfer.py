@@ -5,17 +5,17 @@
 # example: python3 fretransfer -expName mom6_solo_global_ALE_z -fileType history  
 # -sourceDir /home/sourceDirectory -destDir /archive/Firstname.Lastname -destMach gfdl
 ###########################################################################################
-
+import configparser
+import subprocess
 import argparse
-import fnmatch
+import datetime
 import logging
+import fnmatch
+import shutil
 import glob
 import sys
-import os
 import re
-import subprocess
-import shutil
-import datetime
+import os
 
 fretransfer_dir = "/home/Kristopher.Rand/git/fretransfer/templates/"
 template_names = ["historyArgfileTemplate.txt", "restartArgfileTemplate.txt", 
@@ -23,8 +23,14 @@ template_names = ["historyArgfileTemplate.txt", "restartArgfileTemplate.txt",
 argFile_types = ["history", "restart", "ascii"]
 templates = {k:fretransfer_dir + v for (k,v) in zip(argFile_types, template_names)}
 
+freRunArgCfg = "/home/Kristopher.Rand/git/fretransfer/freRunArgs.cfg"
+freDefArgCfg = "/home/Kristopher.Rand/git/fretransfer/freDefArgs.cfg"
+
+config_userDefs = configparser.ConfigParser()
+config_frerun = configparser.ConfigParser()
+
 logging_format = logging_format = '%(levelname)s: %(message)s'
-logging.basicConfig(level=logging.INFO, format=logging_format)
+logging.basicConfig(level = logging.INFO, format = logging_format)
 
 
 # Class for argFile to create with a template   
@@ -73,7 +79,7 @@ class argFile:
             beginDate = get_time_stamp('-b')
             fileNameAppendix = beginDate + '.H.args'
 
-        newFileName=fileNameRoot + fileNameAppendix
+        newFileName = fileNameRoot + fileNameAppendix
         return newFileName
     
     @staticmethod
@@ -259,8 +265,19 @@ def get_time_stamp(*args):
        
     return dateStr
 
-      
-# Parse the command-line arguments
+
+def add_argparse_arguments(configparser_obj, argparse_obj):
+
+    for section in configparser_obj.sections():
+        arg_dict = dict(configparser_obj[section])
+        for key, value in arg_dict.items():
+            if '_' in value:
+                arg_dict[key] = eval(value.replace('_', ''))
+
+        argparse_obj.add_argument(section, **arg_dict)
+
+
+
 def parse_args():
 
     parser = argparse.ArgumentParser()
@@ -270,327 +287,33 @@ def parse_args():
                                      -destDir /archive/Firstname.Lastname -destMachine gfdl \
                                      Example with fre-defined shell variables: python3 fretransfer.py freDefs -paramCheckSumOn 1 ' )
     subparsers = parser.add_subparsers(dest='defCategory')
-    
+
     # sub-parser for user-defined options
     parser_userDef = subparsers.add_parser('userDefs', help='User-defined options')
-    parser_userDef.add_argument('-expName',
-                        type=str, 
-                        default='',
-                        required=True,
-                        help='name of the experiment')
-    parser_userDef.add_argument('-fileType', 
-                        default=[], 
-                        nargs='+', 
-                        required=True,
-                        help='type(s) of file(s) to transfer [ascii, history, restart]')
-    parser_userDef.add_argument('-sourceDir',
-                        type=str, 
-                        default='',
-                        required=True,
-                        dest = 'workDir',
-                        help='Working directory with ASCII, RESTART, and/or HISTORY sub-directories that contain the \
-                        ascii, history, and restart files generated during a model simulation.')
-    parser_userDef.add_argument('-destDir',
-                        type=str,
-                        default='',
-                        required=True,
-                        dest = 'outputDirRemote',
-                        help='root directory on the destination machine. Files will be transferred to: \
-                        ${destDir}/${expName}/[ASCII,RESTART,HISTORY]')
-    parser_userDef.add_argument('-destMachine', 
-                        type=str, 
-                        choices=['gaea', 'gfdl', 'theia'],
-                        required=True,
-                        help='name of the machine to transfer the files to. [gaea, gfdl, theia]')
-    # optional user-defined arguments
-    parser_userDef.add_argument('-makeTarfile', 
-                        type=int,
-                        action='store',
-                        default=0,
-                        choices=[0,1],
-                        dest='paramCompressOn',
-                        help='create a tarball containing the files before transferring? Default = false')
-    
-    parser_userDef.add_argument('-asciiPatterns', default=['out','results', 'log', 'timestats', 'stats'],
-                        nargs='?',
-                        action='store',
-                        help='space-separated list of ascii file patterns to search for.\
-                        User-specified pattern(s) replace the default list\
-                        Ascii files containing the following patterns are transferred by default:\
-                         "out","results", "log", "timestats", "stats", "velocity truncations" ')
-    parser_userDef.add_argument('-restartPatterns', default=['.res.','.nc.', '.input.', '.tgz$', '.ww3$'],
-                        nargs='?',
-                        action='store',
-                        help='space-separated list of restart file patterns to search for. \
-                        User-specified pattern(s) replace the default list. \
-                        Restart files containing the following patterns are transferred by default:\
-                         ".res.",".nc.", ".input.", ".tgz$", ".ww3$" ')
-    parser_userDef.add_argument('-historyPatterns', default=['.nc.','.ww3$', '^rregion'],
-                        nargs='?',
-                        action='store',
-                        help='space-separated list of history file patterns to search for.\
-                        User-specified pattern(s) replace the default list. \
-                        History files containing the following patterns are transferred by default,\
-                         "^rregion",".nc.",".ww3$" ')
-    parser_userDef.add_argument('-stagingType',
-                        choices=['chained','online'],
-                        action='store',
-                        default='chained',
-                        help='output staging type. Default is "chained".')
-    
- 
-    # sub-parser for shell variables set by frerun
 
+    if not os.path.exists(freDefArgCfg):
+        raise FileNotFoundError("The configuration file for 'freDefs' arguments does not exist")
+
+    with open(freDefArgCfg, 'r') as f:
+        config_userDefs.read_file(f)
+
+    add_argparse_arguments(config_userDefs, parser_userDef)
+
+    # sub-parser for shell variables set by frerun
     parser_frerun = subparsers.add_parser('freDefs', help='Shell variables set by `frerun`.')
-    parser_frerun.add_argument('-fileType', 
-                        default=[], 
-                        nargs='+', 
-                        required=True,
-                        help='type(s) of file(s) to transfer [ascii, history, restart]')
-    parser_frerun.add_argument('-sourceDir',
-                        type=str, 
-                        default='',
-                        required=True,
-                        dest = 'workDir',
-                        help='Working directory with ASCII, RESTART, and/or HISTORY sub-directories that contain the \
-                        ascii, history, and restart files generated during a model simulation.')
-    parser_frerun.add_argument('-archDir', 
-                               action='store',
-                               default = '',
-                               type = str,
-                               required = False,
-                               help='Archive directory')
-    parser_frerun.add_argument('-ptmpDir', 
-                               action='store',
-                               default = '',
-                               type = str,
-                               required = False,
-                               help='Ptmp directory to copy output to.')
-    parser_frerun.add_argument('-includeDir', 
-                               action='store',
-                               default = '',
-                               type = str,
-                               required = False,
-                               help='Directory with files to include')
-    parser_frerun.add_argument('-includeDirRemote', 
-                               action='store',
-                               default = '',
-                               type = str,
-                               required = False,
-                               help='Remote directory with files to include')
-    
-    parser_frerun.add_argument('-saveOptions', 
-                               action='store',
-                               type = str,
-                               nargs = '?',
-                               required = False,
-                               help='options for saving output files to pass to output.stager')
-    parser_frerun.add_argument('-xferOptions', 
-                               action='store',
-                               type = str,
-                               nargs = '?',
-                               required = False,
-                               help='options for transferring output files to pass to output.stager')
-    parser_frerun.add_argument('-ppStarterOptions', 
-                               action='store',
-                               type = str,
-                               nargs = '?',
-                               required = False,
-                               help='list of post processing options')
-    parser_frerun.add_argument('-paramPtmpOn', 
-                               action='store',
-                               default=0,
-                               type = int,
-                               choices=[0,1],
-                               required = False,
-                               help='Flag to copy data to ptmp directory')
-    parser_frerun.add_argument('-paramArchiveOn', 
-                               action='store',
-                               default=0,
-                               type = int,
-                               choices=[0,1],
-                               required = False,
-                               help='Flag to move data to archive directory')
-    parser_frerun.add_argument('-paramCheckSumOn', 
-                               action='store',
-                               default=0,
-                               type = int,
-                               choices=[0,1],
-                               required = False,
-                               help='Flag to do data checksums')
-    parser_frerun.add_argument('-ppStartOn', 
-                               action='store',
-                               default=0,
-                               type = int,
-                               choices=[0,1],
-                               required = False,
-                               help='Flag to start post-processing')
-    parser_frerun.add_argument('-paramVerbosityOn', 
-                               action='store',
-                               default=0,
-                               type = int,
-                               choices=[0,1],
-                               required = False,
-                               help='Flag for verbose output')
-    parser_frerun.add_argument('-actionCheckOn', 
-                               action='store',
-                               default=0,
-                               type = int,
-                               choices=[0,1],
-                               required = False,
-                               help='Flag to check argfile processing')
-    parser_frerun.add_argument('-actionCombineOn', 
-                               action='store',
-                               default=0,
-                               type = int,
-                               choices=[0,1],
-                               required = False,
-                               help='Flag to check combine uncombined files')
-    parser_frerun.add_argument('-gridSpec', 
-                               action='store',
-                               default='',
-                               type = str,
-                               required = False,
-                               help='Name of the gridSpec file')
-    parser_frerun.add_argument('-actionRetryOn', 
-                               action='store',
-                               default=0,
-                               type = int,
-                               choices=[0,1],
-                               required = False,
-                               help='Flag to retry failed transfer jobs')
-    parser_frerun.add_argument('-actionSaveOn', 
-                               action='store',
-                               default=0,
-                               type = int,
-                               choices=[0,1],
-                               required = False,
-                               help='Flag to save data')
-    parser_frerun.add_argument('-actionXferOn', 
-                               action='store',
-                               default=0,
-                               type = int,
-                               choices=[0,1],
-                               required = False,
-                               help='Flag to transfer data')
-    parser_frerun.add_argument('-actionFillGridOn', 
-                               action='store',
-                               default=0,
-                               type = int,
-                               choices=[0,1],
-                               required = False,
-                               help='Flag to perform grid filling')
-    parser_frerun.add_argument('-saveRetries', 
-                               action='store',
-                               default=0,
-                               type = int,
-                               required = False,
-                               help='Number of times to retry failed save jobs')
-    parser_frerun.add_argument('-xferRetries', 
-                               action='store',
-                               default=0,
-                               type = int,
-                               required = False,
-                               help='Number of times to retry failed transfer jobs')
-    parser_frerun.add_argument('-saveRetry', 
-                               action='store',
-                               default=0,
-                               type = int,
-                               choices=[0,1],
-                               required = False,
-                               help='Flag to retry failed save jobs')
-    parser_frerun.add_argument('-xferRetry', 
-                               action='store',
-                               default=0,
-                               type = int,
-                               choices=[0,1],
-                               required = False,
-                               help='Flag to retry failed transfer jobs')
-    parser_frerun.add_argument('-hsmModuleFilesDir', 
-                               action='store',
-                               default='',
-                               type = str,
-                               required = False,
-                               help='Path to the hsm module file directory')
-    parser_frerun.add_argument('-hsmVersion', 
-                               action='store',
-                               default='',
-                               type = str,
-                               required = False,
-                               help='Version of hsm currently loaded in the environment')
-    parser_frerun.add_argument('-modulesHomeDir', 
-                               action='store',
-                               default='',
-                               type = str,
-                               required = False,
-                               help='Path to module file home directory')
-    parser_frerun.add_argument('-xferToolModuleFilesDir', 
-                               action='store',
-                               default='',
-                               type = str,
-                               required = False,
-                               help='Path to the fre transfer tools module file directory')
-    parser_frerun.add_argument('-xferToolVersion', 
-                               action='store',
-                               default='',
-                               type = str,
-                               required = False,
-                               help='Version of the fre transfer tools currently loaded in the environment')
-    parser_frerun.add_argument('-mppnccombineOptString', 
-                               action='store',
-                               default='',
-                               type = str,
-                               required = False,
-                               help='options to pass to mppnccombine')
-    parser_frerun.add_argument('-xmlFiles', 
-                               action='store',
-                               default='',
-                               type = str,
-                               required = False,
-                               help='xml file(s) used for model simulation')
-    parser_frerun.add_argument('-xmlFilesRemote', 
-                               action='store',
-                               default='',
-                               type = str,
-                               required = False,
-                               help='remote xml files for post-processing')
-    parser_frerun.add_argument('-FRE_HSM_TEST_VERSION', 
-                               action='store',
-                               default='',
-                               type = str,
-                               required = False,
-                               help='Version of HSM currently loaded in the environment if fre version is TEST')
-    
-    parser_frerun.add_argument('-FRE_GCP_TEST_VERSION', 
-                               action='store',
-                               default='',
-                               type = str,
-                               required = False,
-                               help='Version of GCP currently loaded in the environment if fre version is TEST')
-    parser_frerun.add_argument('-FRE_COMMANDS_TEST', 
-                               action='store',
-                               default='',
-                               type = str,
-                               required = False,
-                               help = 'Version of fre commands currently loaded in the environment if fre version is\
-                                    test')
-    parser_frerun.add_argument('-FRE_NCTOOLS_TEST', 
-                               action='store',
-                               default='',
-                               type = str,
-                               required = False,
-                               help ='Version of fre nctools currently loaded in the environment if fre version is \
-                                     TEST')
-    parser_frerun.add_argument('-FRE_CURATOR_TEST', 
-                               action='store',
-                               default='',
-                               type = str,
-                               required = False,
-                               help='Version of fre curator currently loaded in the environment if fre version is TEST')
+
+    if not os.path.exists(freRunArgCfg):
+        raise FileNotFoundError("The configuration file for 'frerun' arguments does not exist.")
+
+    with open(freRunArgCfg, 'r') as g:
+        config_frerun.read_file(g)
+
+    add_argparse_arguments(config_frerun, parser_frerun)
+
     args = parser.parse_args()
 
     return args
-    
+
 
 def get_sourcepath(args, ftype):
 
