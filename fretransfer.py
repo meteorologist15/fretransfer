@@ -35,8 +35,27 @@ logging.basicConfig(level = logging.INFO, format = logging_format)
 
 # Class for argFile to create with a template   
 class argFile:
- 
+    """ 
+    Builds a container around the attributes of an .args file, which references
+    essential states of a FRE program, in this case, output.stager
+
+    Inheritance: None
+    """  
     def __init__(self, fileType, newFilePath, *args):
+        """
+        Initialize an object that creates attributes to the .args file using a
+        template, which is checked for its existence.
+
+        Parameters (3):
+        - fileType (str): The type of .args file being created (i.e. history, 
+                         restart, ascii)
+        - newFilePath (str): Path of newly written .args file
+        - *args: Additional arguments needed
+
+        Returns:
+        None
+
+        """
     
         self.fileType = fileType
 
@@ -57,6 +76,16 @@ class argFile:
     # the new file is placed in {newFilePath}/{fileType}
     @staticmethod
     def new_file(self, rootFilePath):
+        """
+        Retrieve the file path of a newly created .args file
+
+        Parameters(1):
+        - rootFilePath(str): The base directory for the final location
+
+        Returns (1):
+        - Final path for the new .args file
+
+        """
 
         fileName = argFile.get_new_file_name(self)
         return os.path.join(rootFilePath, self.fileType, fileName)
@@ -64,6 +93,18 @@ class argFile:
     
     @staticmethod
     def get_new_file_name(self):
+        """
+        Builds a string containing a date and time for the newly created
+        .args file
+
+        Parameters (0):
+        - None
+
+        Returns (1):
+        - newFileName (str): String with a filename containing a time stamp
+                             for history, restart, and ascii .args files
+
+        """
 
         fileNameRoot = 'output.stager.'
 
@@ -81,9 +122,23 @@ class argFile:
 
         newFileName = fileNameRoot + fileNameAppendix
         return newFileName
-    
+
+
     @staticmethod
     def get_file_list(self, fileType, filePatterns):
+        """
+        Gather and store a list of all the files needed for staging
+        via output.stager based upon the file type desired, i.e.
+        history, restart, and ascii
+
+        Parameters (2):
+        - fileType (str): 'ascii', 'history', or 'restart'
+        - filePatterns (str): General list of file patterns to investigate from
+
+        Returns (0):
+        - None
+
+        """
 
         if any(filePatterns):
            patternMatch = filePatterns
