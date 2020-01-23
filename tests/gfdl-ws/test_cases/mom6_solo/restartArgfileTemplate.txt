@@ -1,0 +1,37 @@
+set expName                   =   $name
+set type                      =   restart
+set stagingType               =   $outputStagingType
+set actionCombineOn           =   $actionCombineOn
+set actionCheckOn             =   $actionCheckOn
+set actionSaveOn              =   $actionSaveOn
+set actionXferOn              =   $actionXferOn
+set actionPPStartOn           =   0
+set paramArchiveOn            =   $paramArchiveOn
+set paramPtmpOn               =   $paramPtmpOn
+set paramCheckSumOn           =   $paramCheckSumOn
+set paramCompressOn           =   $paramCompressOn
+set paramVerbosityOn          =   $?flagVerbosityOn
+set workDir                   =   $tmpOutputDir
+set ptmpDir                   =   $ptmpDir
+set archDir                   =   $restartArchDir
+set outputDirRemote           =   $restartOutputDirRemote
+set saveOptions               = ( $restartSaveOptions )
+set xferOptions               = ( $restartXferOptions )
+set saveRetries               =   $outputStagerSaveRetries
+set xferRetries               =   $outputStagerXferRetries
+set saveRetry                 =   0
+set xferRetry                 =   0
+set freCommandsModuleFilesDir =   $freCommandsModuleFilesDir
+set freCommandsVersion        =   $freCommandsVersion
+set hsmModuleFilesDir         =   $hsmModuleFilesDir
+set hsmVersion                =   $hsmVersion
+set xferToolModuleFilesDir    =   $xferToolModuleFilesDir
+set xferToolVersion           =   $xferToolVersion
+set modulesHomeDir            =   $modulesHomeDir
+set mppnccombineOptString     =  '$mppnccombineOptsRestart'
+
+setenv FRE_HSM_TEST_VERSION $FRE_HSM_TEST_VERSION
+setenv FRE_GCP_TEST_VERSION $FRE_GCP_TEST_VERSION
+setenv FRE_COMMANDS_TEST $FRE_COMMANDS_TEST
+setenv FRE_NCTOOLS_TEST $FRE_NCTOOLS_TEST
+setenv FRE_CURATOR_TEST $FRE_CURATOR_TEST
