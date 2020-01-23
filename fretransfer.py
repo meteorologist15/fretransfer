@@ -50,27 +50,35 @@ class argFile:
     # each new file has a rootFilePath set to None by default    
     # the new file is placed in {newFilePath}/{fileType}
     @staticmethod
-    def new_file(self,rootFilePath):
+    def new_file(self, rootFilePath):
+
         fileName = argFile.get_new_file_name(self)
         return os.path.join(rootFilePath, self.fileType, fileName)
+
     
     @staticmethod
     def get_new_file_name(self):
+
         fileNameRoot = 'output.stager.'
+
         if self.fileType == 'ascii':
            beginDate = get_time_stamp('-b')
            fileNameAppendix = beginDate + '.A.args'
+
         elif self.fileType == 'restart':
            endDate = get_time_stamp('-e')
            fileNameAppendix = endDate + '.R.args'
+
         elif self.fileType == 'history':
             beginDate = get_time_stamp('-b')
-            fileNameAppendix = beginDate + '.H.args'           
+            fileNameAppendix = beginDate + '.H.args'
+
         newFileName=fileNameRoot + fileNameAppendix
         return newFileName
     
     @staticmethod
-    def get_file_list(self,fileType,filePatterns):
+    def get_file_list(self, fileType, filePatterns):
+
         if any(filePatterns):
            patternMatch = filePatterns
         elif fileType == 'ascii': 
@@ -80,25 +88,28 @@ class argFile:
         elif fileType == 'history':
             patternMatch = ['*nc*','*.ww3']
         
-        names=os.listdir('.')
+        names = os.listdir('.')
         self.fileList = multi_filter(names, patternMatch)
 
+
 # write the data to the file
-def write_file(filePath,fileStatus="",**kwargs):
+def write_file(filePath, fileStatus="", **kwargs):
 
     if fileStatus != "w":
         if fileStatus != "a":
             raise ValueError("Error: fileStatus must be 'w' or 'a'")
            
-    shutil.copy(filePath, filePath+"~" )
+    shutil.copy(filePath, filePath + "~" )
 
     # read in lines from the temporary sourceFile
-    source= open(filePath+"~", "r" )
+    source = open(filePath + "~", "r" )
     lines = []
+
     for line in source:
-        #print(line)
         lines.append(line)
+
     source.close()
+
     # replace lines with values if they exist
     for key, value in kwargs.items():
         logging.info(key, str(value))
@@ -119,50 +130,57 @@ def write_file(filePath,fileStatus="",**kwargs):
     destination.close()
     # remove the temporary file
     filePathParts = os.path.split(filePath)
-    clean_dir(filePathParts[0],[filePathParts[1]+'~'])
+    clean_dir(filePathParts[0], [filePathParts[1] + '~'])
+
 
 #Generator function which yields a list of names that match one or more of the patterns."""       
 def multi_filter(names, patterns):
+
     fileList = []
     for name in names:
         for pattern in patterns:
             if fnmatch.fnmatch(name, pattern) and name not in fileList:
                 fileList.append(name)
     return fileList
+
                 
 # delete file(s) in a directory
-def clean_dir(pathName,removeFilePatterns):
+def clean_dir(pathName, removeFilePatterns):
+
     os.chdir(pathName)
     for pattern in removeFilePatterns:
-        fileList=glob.glob(pattern)
+        fileList = glob.glob(pattern)
         for file in fileList:
             os.remove(file)
     
                
-def copy_file(srcPath,destPath):
+def copy_file(srcPath, destPath):
+
     pathParts = os.path.split(destPath)
     if not os.path.isdir(pathParts[0]):
         os.makedirs(pathParts[0])
         
-    shutil.copyfile(srcPath,destPath)
+    shutil.copyfile(srcPath, destPath)
     if not os.path.isfile(destPath):
         raise FileNotFoundError("File %s was not created" % destPath)
    
  
-def pexec(arg,*args):
+def pexec(arg, *args):
+
     argList = []
     argList.append(arg)
  
     for a in args:
         argList.append(''.join(a)) 
-    return subprocess.Popen(argList, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+    return subprocess.Popen(argList, stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
 
 
 # determine the location of the host machine
 def get_host_name():
 
     hostName = os.environ['HOST']
-    if any([re.search(r, hostName) for r in ['gfdl.noaa.gov','gaea', 'theia']]):
+    if any([re.search(r, hostName) for r in ['gfdl.noaa.gov', 'gaea', 'theia']]):
         return hostName
     else:
         raise OSError('Error: $HOST is not gfdl, gaea, or theia. Exiting.')
@@ -171,8 +189,9 @@ def get_host_name():
 # determine the location of the Fre source code and corresponding argFile templates
 # assumes that argFile templates will be placed in the fre-commands directory on the host machine
 def get_fre_dir():
-    hostName=get_host_name()
-    freVersion=get_fre_version()
+
+    hostName = get_host_name()
+    freVersion = get_fre_version()
     if 'gfdl.noaa.gov' in hostName:
         freDir = '/home/fms/local/opt/fre-commands/' + freVersion + '/site/gfdl-ws'
     elif 'gaea' in hostName:
@@ -182,12 +201,15 @@ def get_fre_dir():
         
     return freDir
 
+
 # return the fre module file version currently loaded in the environment
 def get_fre_version():
-    moduleVersion=os.environ['MODULE_VERSION']
+
+    moduleVersion = os.environ['MODULE_VERSION']
    
-    moduleCmd='/usr/local/Modules/' + moduleVersion + '/bin/modulecmd'
-    p=pexec(moduleCmd,"tcsh", "list")
+    moduleCmd = '/usr/local/Modules/' + moduleVersion + '/bin/modulecmd'
+    p = pexec(moduleCmd,"tcsh", "list")
+
     # Read stdout and print each new line
     sys.stdout.flush()
     for line in iter(p.stdout.readline, b''):
@@ -197,12 +219,14 @@ def get_fre_version():
         # search for the fre version
         if 'bronx-' in lineStr:
            useline = lineStr.strip()
-           searchResult=re.search(r'(?<=fre/)\S*',lineStr)
+           searchResult = re.search(r'(?<=fre/)\S*', lineStr)
            freVersion = searchResult.group(0)
 
            break
     
     return freVersion
+
+
 # create a time stamp to append to the temporary argFiles and directory.
 def get_time_stamp(*args):
 
@@ -222,21 +246,23 @@ def get_time_stamp(*args):
         lineStr = line.decode()
          # return a string appendix `tmp(DOY)(HHMMSS)`
         if 'no_time_stamp' in lineStr:
-           wereAtNowNow=datetime.datetime.now()
+           wereAtNowNow = datetime.datetime.now()
            dateStr = wereAtNowNow.strftime("%Y.%m.%d")
            dt = datetime.datetime.strptime(dateStr, "%Y.%m.%d")
            tt = dt.timetuple()
           
-           dateStr = "tmp" +  str(tt.tm_yday) + wereAtNowNow.strftime("%H%M%S")
+           dateStr = "tmp" + str(tt.tm_yday) + wereAtNowNow.strftime("%H%M%S")
            break
         else:
            dateStr = lineStr.strip()
            break
        
     return dateStr
+
       
 # Parse the command-line arguments
 def parse_args():
+
     parser = argparse.ArgumentParser()
     parser.add_argument("-help", help='Generate an argFile with user-defined parameters and fre-defined \
                                      shell variables. Example with user-defined arguments: python3 fretransfer.py userDefs \
@@ -579,13 +605,11 @@ def get_sourcepath(args, ftype):
     return sourcePath
 
 
-
-# main program
 def main():
 
-  # parse the arguments
+    # parse the arguments
     args = parse_args()
-  # set up argFiles with user-defined options
+    # set up argFiles with user-defined options
   
     if args.defCategory == 'userDefs':
         logging.info('Parsing Userdefs')
@@ -598,14 +622,14 @@ def main():
     for ftype in args.fileType:
         sourcePath = get_sourcepath(args, ftype)
 
-        A = argFile(ftype,'/home/Jessica.Liptak/temp')
+        A = argFile(ftype, '/home/Jessica.Liptak/temp')
         
         # clean out argFiles from the working directory
-        clean_dir(os.path.split(A.newFileLocation)[0],['*.args*'])
+        clean_dir(os.path.split(A.newFileLocation)[0], ['*.args*'])
         # copy the template file to the working directory
         copy_file(A.templateLocation,A.newFileLocation)
         # write values in the argDict to the argFile
-        write_file(A.newFileLocation,"w",**argDict)
+        write_file(A.newFileLocation, "w", **argDict)
         
     elif args.defCategory == 'freDefs':
 
