@@ -26,7 +26,6 @@ class argFileTemplate:
     def __init__(self, fileType):
         self.fileType=fileType
         self.templateName = self.fileType + 'ArgfileTemplate.txt'
-#        self.templateLocation = argFileTemplate.get_template(os.path.join(get_fre_dir(),self.templateName))
         self.templateLocation = argFileTemplate.get_template(os.path.join('/home/Jessica.Liptak/fretransfer/RemoteSystemsTempFiles',self.templateName))
         
     @staticmethod
@@ -117,7 +116,6 @@ def write_file(filePath,fileStatus="",**kwargs):
     # write values to argFile
     destination = open(filePath, fileStatus)
     for line in lines:
-        #print(line)
         if len(line.strip()) > 0:
             destination.write(line + '\n')       
     
@@ -146,7 +144,6 @@ def clean_dir(pathName,removeFilePatterns):
                
 def copy_file(srcPath,destPath):
     pathParts = os.path.split(destPath)
-    #print(pathParts[0])
     if not os.path.isdir(pathParts[0]):
         os.makedirs(pathParts[0])
         
@@ -162,13 +159,11 @@ def pexec(arg,*args):
  
     for a in args:
         argList.append(''.join(a)) 
-    #print(argList)
     return subprocess.Popen(argList, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
 # determine the location of the host machine
 def get_host_name():
     hostName=os.environ['HOST']
-    #print("Host name is", hostName)
     if  any([re.search(r, hostName) for r in ['gfdl.noaa.gov','gaea', 'theia']]):
         return hostName
     else:
@@ -192,7 +187,6 @@ def get_fre_version():
     moduleVersion=os.environ['MODULE_VERSION']
    
     moduleCmd='/usr/local/Modules/' + moduleVersion + '/bin/modulecmd'
-    #print(moduleCmd)
     p=pexec(moduleCmd,"tcsh", "list")
     # Read stdout and print each new line
     sys.stdout.flush()
@@ -227,7 +221,6 @@ def get_time_stamp(*args):
         sys.stdout.flush()
         # convert the byte object to a string
         lineStr = line.decode()
-        #print(lineStr)
          # return a string appendix `tmp(DOY)(HHMMSS)`
         if 'no_time_stamp' in lineStr:
            wereAtNowNow=datetime.datetime.now()
@@ -618,7 +611,6 @@ def main():
     for a in vars(args):
         if a != 'fileType' and a != 'workDir':
             argDict[a] = getattr(args,a)
-        #print('hello',str(argDict[a]))
     for ftype in args.fileType:
         try: 
             ftype == 'ascii' or ftype == 'restart' or ftype == 'history'
