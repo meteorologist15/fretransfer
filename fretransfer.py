@@ -1,9 +1,11 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
+
 # FRETRANSFER
 # this is the main fretransfer script
 # example: python3 fretransfer -expName mom6_solo_global_ALE_z -fileType history  
 # -sourceDir /home/sourceDirectory -destDir /archive/Firstname.Lastname -destMach gfdl
 ###########################################################################################
+
 import argparse
 import fnmatch
 import logging
@@ -15,40 +17,35 @@ import subprocess
 import shutil
 import datetime
 
+fretransfer_dir = "/home/Kristopher.Rand/git/fretransfer/templates/"
+template_names = ["historyArgfileTemplate.txt", "restartArgfileTemplate.txt", 
+                  "asciiArgfileTemplate.txt"]
+argFile_types = ["history", "restart", "ascii"]
+templates = {k:fretransfer_dir + v for (k,v) in zip(argFile_types, template_names)}
 
 logging_format = logging_format = '%(levelname)s: %(message)s'
 logging.basicConfig(level=logging.INFO, format=logging_format)
 
 
-# Class for managing  argFile templates
-class argFileTemplate:
-    
-    def __init__(self, fileType):
-        self.fileType=fileType
-        self.templateName = self.fileType + 'ArgfileTemplate.txt'
-        self.templateLocation = argFileTemplate.get_template(os.path.join('/home/Jessica.Liptak/fretransfer/RemoteSystemsTempFiles',self.templateName))
-        
-    @staticmethod
-    def get_template(filePath):
-        if os.path.isfile(filePath)
-            return filePath
-        else:
-            raise FileNotFoundError("Template file not found")
-   
- 
 # Class for argFile to create with a template   
-class argFile(argFileTemplate):
+class argFile:
  
-    def __init__(self, fileType, newFilePath,*args):
-       filePatterns = []
-       argFileTemplate.__init__(self,fileType)
-       # get the full path of new argFile 
-       self.newFileLocation = argFile.new_file(self,newFilePath)
-       
-     
-       # get list of files to process
-       argFile.get_file_list(self,self.fileType,filePatterns)
-     
+    def __init__(self, fileType, newFilePath, *args):
+    
+        self.fileType = fileType
+
+        if os.path.isfile(templates[fileType]):
+            self.templateLocation = templates[fileType]
+        else:
+            raise FileNotFoundError("The %s template file %s does not exist." % (fileType, templates[fileType]))
+
+        filePatterns = []
+        # get the full path of new argFile 
+        self.newFileLocation = argFile.new_file(self, newFilePath)
+
+        # get list of files to process
+        argFile.get_file_list(self, self.fileType, filePatterns)
+ 
     
     # each new file has a rootFilePath set to None by default    
     # the new file is placed in {newFilePath}/{fileType}
