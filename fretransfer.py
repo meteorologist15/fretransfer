@@ -29,8 +29,8 @@ freDefArgCfg = "/home/Kristopher.Rand/git/fretransfer/freDefArgs.cfg"
 config_userDefs = configparser.ConfigParser()
 config_frerun = configparser.ConfigParser()
 
-logging_format = logging_format = '%(levelname)s: %(message)s'
-logging.basicConfig(level = logging.INFO, format = logging_format)
+logging_format = '%(levelname)s: %(message)s'
+logging.basicConfig(level=logging.INFO, format=logging_format)
 
 
 # Class for argFile to create with a template   
@@ -223,7 +223,6 @@ def multi_filter(names, patterns):
     return fileList
 
                 
-# delete file(s) in a directory
 def clean_dir(pathName, removeFilePatterns):
     """
     Function to help clear a directory of unnecessary files based upon a search
@@ -290,7 +289,6 @@ def pexec(arg, *args):
     return subprocess.Popen(argList, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
 
-# determine the location of the host machine
 def get_host_name():
     """
     Retrieves the machine HOST name. Raises an error if the hostname is not
@@ -358,8 +356,8 @@ def get_fre_version():
     sys.stdout.flush()
     for line in iter(p.stdout.readline, b''):
         sys.stdout.flush()
-        # convert the byte object to a string
         lineStr = line.decode()
+
         # search for the fre version
         if 'bronx-' in lineStr:
            useline = lineStr.strip()
@@ -371,7 +369,6 @@ def get_fre_version():
     return freVersion
 
 
-# create a time stamp to append to the temporary argFiles and directory.
 def get_time_stamp(*args):
     """
     Function that creates a time stamp to append to the temporary argFiles and
@@ -385,7 +382,7 @@ def get_time_stamp(*args):
 
     """
 
-    baseDir= get_fre_dir()
+    baseDir = get_fre_dir()
     
     cmd = os.path.join(baseDir.split("/site")[0],'sbin','time_stamp.csh')
     if not os.path.isfile(cmd):
@@ -393,13 +390,13 @@ def get_time_stamp(*args):
 
     p = pexec(cmd, args)
     
-     # Read stdout and print each new line
+    # Read stdout and print each new line
     sys.stdout.flush()
     for line in iter(p.stdout.readline, b''):
         sys.stdout.flush()
-        # convert the byte object to a string
         lineStr = line.decode()
-         # return a string appendix `tmp(DOY)(HHMMSS)`
+
+        # return a string appendix `tmp(DOY)(HHMMSS)`
         if 'no_time_stamp' in lineStr:
            wereAtNowNow = datetime.datetime.now()
            dateStr = wereAtNowNow.strftime("%Y.%m.%d")
@@ -442,6 +439,30 @@ def add_argparse_arguments(configparser_obj, argparse_obj):
 
         argparse_obj.add_argument(section, **arg_dict)
 
+
+def get_sourcepath(args, ftype):
+    """
+    Helper function for main() which retrieves the source path of the
+    working directory housing the 'ascii', 'history', and 'restart' files
+
+    Parameters (2):
+    - args: ArgParse object
+    - ftype: The type of files fretransfer is dealing with
+
+    Returns (1):
+    - The path to the source directory.
+
+    """
+
+    if not (ftype == 'ascii' or ftype == 'restart' or ftype == 'history'):
+        raise ValueError("Invalid file type. Must be 'history', 'ascii', or 'restart'")
+
+    sourcePath = os.path.join(args.workDir, ftype)
+    if not os.path.exists(sourcePath):
+        raise NotADirectoryError("Directory %s does not exist!" % sourcePath)
+
+    os.chdir(sourcePath)
+    return sourcePath
 
 
 def parse_args():
@@ -494,31 +515,6 @@ def parse_args():
     return args
 
 
-def get_sourcepath(args, ftype):
-    """
-    Helper function for main() which retrieves the source path of the
-    working directory housing the 'ascii', 'history', and 'restart' files
-
-    Parameters (2):
-    - args: ArgParse object
-    - ftype: The type of files fretransfer is dealing with
-
-    Returns (1):
-    - The path to the source directory.
-
-    """
-
-    if not (ftype == 'ascii' or ftype == 'restart' or ftype == 'history'):
-        raise ValueError("Invalid file type. Must be 'history', 'ascii', or 'restart'")
-
-    sourcePath = os.path.join(args.workDir, ftype)
-    if not os.path.exists(sourcePath):
-        raise NotADirectoryError("Directory %s does not exist!" % sourcePath)
-
-    os.chdir(sourcePath)
-    return sourcePath
-
-
 def main():
     """
     The meat of fretransfer. Creates an argFile object using a template and writes
@@ -533,29 +529,27 @@ def main():
 
     """
 
-    # parse the arguments
     args = parse_args()
-    # set up argFiles with user-defined options
-  
+
+    # set up argFiles with user-defined options  
     if args.defCategory == 'userDefs':
         logging.info('Parsing Userdefs')
     
-    # make a dictionary
-    argDict = {}
-    for a in vars(args):
-        argDict[a] = getattr(args, a)
+        argDict = {}
+        for a in vars(args):
+            argDict[a] = getattr(args, a)
     
-    for ftype in args.fileType:
-        sourcePath = get_sourcepath(args, ftype)
+        for ftype in args.fileType:
+            sourcePath = get_sourcepath(args, ftype)
 
-        A = argFile(ftype, '/home/Jessica.Liptak/temp')
+            A = argFile(ftype, '/home/Jessica.Liptak/temp')
         
-        # clean out argFiles from the working directory
-        clean_dir(os.path.split(A.newFileLocation)[0], ['*.args*'])
-        # copy the template file to the working directory
-        copy_file(A.templateLocation,A.newFileLocation)
-        # write values in the argDict to the argFile
-        write_file(A.newFileLocation, "w", **argDict)
+            # clean out argFiles from the working directory
+            clean_dir(os.path.split(A.newFileLocation)[0], ['*.args*'])
+            # copy the template file to the working directory
+            copy_file(A.templateLocation,A.newFileLocation)
+            # write values in the argDict to the argFile
+            write_file(A.newFileLocation, "w", **argDict)
         
     elif args.defCategory == 'freDefs':
 
