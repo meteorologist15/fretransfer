@@ -542,7 +542,8 @@ def main():
         for ftype in args.fileType:
             sourcePath = get_sourcepath(args, ftype)
 
-            A = argFile(ftype, '/home/Jessica.Liptak/temp')
+            #A = argFile(ftype, '/home/Jessica.Liptak/temp')
+            A = argFile(ftype, '/home/Kristopher.Rand/foo_test_dir/fretransfer')
         
             # clean out argFiles from the working directory
             clean_dir(os.path.split(A.newFileLocation)[0], ['*.args*'])
