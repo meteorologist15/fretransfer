@@ -153,8 +153,19 @@ class argFile:
         self.fileList = multi_filter(names, patternMatch)
 
 
-# write the data to the file
 def write_file(filePath, fileStatus="", **kwargs):
+    """
+    Write out the values of all the arguments listed in the temporary file
+    to the new .args file
+
+    Parameters (2)
+    - fileStatus (str): In 'write' or 'append' mode. Must be either/or.
+    - **kwargs: Unpacking of a dictionary with the key/value pairs of arguments
+
+    Returns (0):
+    - None
+
+    """
 
     if fileStatus != "w":
         if fileStatus != "a":
@@ -191,6 +202,18 @@ def write_file(filePath, fileStatus="", **kwargs):
 
 #Generator function which yields a list of names that match one or more of the patterns."""       
 def multi_filter(names, patterns):
+    """
+    Generator function which yields a list of names that match one or more of the
+    file patterns.
+
+    Parameters (2)
+    - names (str): A list of file strings all within the current working directory
+    - patterns (str): A list of strings that describe a search filter for certain files
+
+    Returns (1)
+    - A list of all of the matched files based off the patterns given
+
+    """
 
     fileList = []
     for name in names:
@@ -202,6 +225,18 @@ def multi_filter(names, patterns):
                 
 # delete file(s) in a directory
 def clean_dir(pathName, removeFilePatterns):
+    """
+    Function to help clear a directory of unnecessary files based upon a search
+    patterns
+
+    Parameters (2):
+    - pathName (str): The base directory for the deletion searching
+    - removeFilePatterns (str): The patterns to identify files for removal
+
+    Returns (0):
+    - None
+
+    """
 
     os.chdir(pathName)
     for pattern in removeFilePatterns:
@@ -211,6 +246,18 @@ def clean_dir(pathName, removeFilePatterns):
     
                
 def copy_file(srcPath, destPath):
+    """
+    Copies a new .args file to the appropriate path and creates directories
+    if necessary.
+
+    Paramters (2):
+    - srcPath (str): Original path of .args file
+    - destPath (str): New path of .args file copied from srcPath
+
+    Returns (0):
+    None
+
+    """
 
     pathParts = os.path.split(destPath)
     if not os.path.isdir(pathParts[0]):
@@ -222,6 +269,17 @@ def copy_file(srcPath, destPath):
    
  
 def pexec(arg, *args):
+    """
+    Executes a command based upon the given subparser arguments
+
+    Paramters (2):
+    - arg (str): Initial argument
+    - *args (list): List of arguments from subparser
+
+    Returns (1)
+    - A Python subprocess object
+
+    """
 
     argList = []
     argList.append(arg)
@@ -234,6 +292,17 @@ def pexec(arg, *args):
 
 # determine the location of the host machine
 def get_host_name():
+    """
+    Retrieves the machine HOST name. Raises an error if the hostname is not
+    GFDL, Gaea, or Theia.
+
+    Parameters (0):
+    - None
+
+    Returns (1)
+    - The machine HOST name
+
+    """
 
     hostName = os.environ['HOST']
     if any([re.search(r, hostName) for r in ['gfdl.noaa.gov', 'gaea', 'theia']]):
@@ -242,9 +311,18 @@ def get_host_name():
         raise OSError('Error: $HOST is not gfdl, gaea, or theia. Exiting.')
 
 
-# determine the location of the Fre source code and corresponding argFile templates
-# assumes that argFile templates will be placed in the fre-commands directory on the host machine
 def get_fre_dir():
+    """
+    Retrieve the directory containing the repository for the FRE source code and
+    .args template files (their eventual final destination).
+
+    Parameters (0):
+    - None
+
+    Returns (1):
+    - The base FRE directory
+
+    """
 
     hostName = get_host_name()
     freVersion = get_fre_version()
@@ -260,6 +338,16 @@ def get_fre_dir():
 
 # return the fre module file version currently loaded in the environment
 def get_fre_version():
+    """
+    Retrieve the current FRE module version loaded in the environment.
+
+    Parameters (0)
+    - None
+
+    Returns (1)
+    - The FRE version loaded
+
+    """
 
     moduleVersion = os.environ['MODULE_VERSION']
    
@@ -285,6 +373,17 @@ def get_fre_version():
 
 # create a time stamp to append to the temporary argFiles and directory.
 def get_time_stamp(*args):
+    """
+    Function that creates a time stamp to append to the temporary argFiles and
+    directory.
+
+    Parameters (1):
+    - *args: Argument string for the date
+
+    Returns (1):
+    - A datetime string to attach to the temp files
+
+    """
 
     baseDir= get_fre_dir()
     
@@ -317,6 +416,23 @@ def get_time_stamp(*args):
 
 
 def add_argparse_arguments(configparser_obj, argparse_obj):
+    """
+    Helper function that inserts individual "sections" of a config file
+    into an argparse object via its method "add_argument". It places
+    the key, value pairings of a section into a dictionary and unpacks
+    that dictionary into ArgumentParser.add_argument(). Special key, value
+    relationships containing Python reserved words must be maintained and
+    are demarcated by a preceding underscore (_) in the config file. These
+    are parsed via Python's 'eval' method after the underscore is removed.
+
+    Parameters (2):
+    - configparser_obj: An object from the configparser.ConfigParser() class
+    - argparse_obj: An object from the argparse.ArgumentParser() class
+
+    Returns (0):
+    - None
+
+    """
 
     for section in configparser_obj.sections():
         arg_dict = dict(configparser_obj[section])
@@ -329,6 +445,19 @@ def add_argparse_arguments(configparser_obj, argparse_obj):
 
 
 def parse_args():
+    """
+    The core function for parsing arguments. Arguments for fretransfer,
+    userDef arguments, and frerun arguments are defined and parsed here.
+    The userDef and frerun arguments are grabbed from configuration files,
+    which are located in the same directory as the argFile temporary files.
+
+    Parameters (0):
+    - None
+
+    Returns (1):
+    - The arguments from fretransfer
+
+    """
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-help", help='Generate an argFile with user-defined parameters and fre-defined \
@@ -366,6 +495,18 @@ def parse_args():
 
 
 def get_sourcepath(args, ftype):
+    """
+    Helper function for main() which retrieves the source path of the
+    working directory housing the 'ascii', 'history', and 'restart' files
+
+    Parameters (2):
+    - args: ArgParse object
+    - ftype: The type of files fretransfer is dealing with
+
+    Returns (1):
+    - The path to the source directory.
+
+    """
 
     if not (ftype == 'ascii' or ftype == 'restart' or ftype == 'history'):
         raise ValueError("Invalid file type. Must be 'history', 'ascii', or 'restart'")
@@ -379,6 +520,18 @@ def get_sourcepath(args, ftype):
 
 
 def main():
+    """
+    The meat of fretransfer. Creates an argFile object using a template and writes
+    out a new .args file to the appropriate directory, given specific command-line
+    arguments.
+
+    Parameters (0):
+    - None
+
+    Returns (0):
+    - None
+
+    """
 
     # parse the arguments
     args = parse_args()
