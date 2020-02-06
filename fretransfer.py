@@ -17,14 +17,17 @@ import sys
 import re
 import os
 
-fretransfer_dir = "/home/Kristopher.Rand/git/fretransfer/templates/"
+#fretransfer_dir = "/home/Kristopher.Rand/git/fretransfer/templates/"
+fretransfer_dir = "/ncrc/home1/Kristopher.Rand/git/fretransfer/templates/"
 template_names = ["historyArgfileTemplate.txt", "restartArgfileTemplate.txt", 
                   "asciiArgfileTemplate.txt"]
 argFile_types = ["history", "restart", "ascii"]
 templates = {k:fretransfer_dir + v for (k,v) in zip(argFile_types, template_names)}
 
-freRunArgCfg = "/home/Kristopher.Rand/git/fretransfer/freRunArgs.cfg"
-freDefArgCfg = "/home/Kristopher.Rand/git/fretransfer/freDefArgs.cfg"
+#freRunArgCfg = "/home/Kristopher.Rand/git/fretransfer/freRunArgs.cfg"
+freRunArgCfg = "/ncrc/home1/Kristopher.Rand/git/fretransfer/freRunArgs.cfg"
+#freDefArgCfg = "/home/Kristopher.Rand/git/fretransfer/freDefArgs.cfg"
+freDefArgCfg = "/ncrc/home1/Kristopher.Rand/git/fretransfer/freDefArgs.cfg"
 
 config_userDefs = configparser.ConfigParser()
 config_frerun = configparser.ConfigParser()
@@ -348,9 +351,10 @@ def get_fre_version():
     """
 
     moduleVersion = os.environ['MODULE_VERSION']
-   
-    moduleCmd = '/usr/local/Modules/' + moduleVersion + '/bin/modulecmd'
-    p = pexec(moduleCmd,"tcsh", "list")
+
+    moduleCmd = '/opt/cray/pe/modules/' + moduleVersion + '/bin/modulecmd'
+    #moduleCmd = '/usr/local/Modules/' + moduleVersion + '/bin/modulecmd'
+    p = pexec(moduleCmd, "tcsh", "list")
 
     # Read stdout and print each new line
     sys.stdout.flush()
@@ -384,7 +388,7 @@ def get_time_stamp(*args):
 
     baseDir = get_fre_dir()
     
-    cmd = os.path.join(baseDir.split("/site")[0],'sbin','time_stamp.csh')
+    cmd = os.path.join(baseDir.split("/site")[0], 'sbin', 'time_stamp.csh')
     if not os.path.isfile(cmd):
         raise FileNotFoundError("time_stamp.csh not found in the fre root directory")
 
@@ -480,12 +484,12 @@ def parse_args():
 
     """
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-help", help='Generate an argFile with user-defined parameters and fre-defined \
+    parser = argparse.ArgumentParser(description="Fretransfer generates a FRE-style argFile with user-defined parameters and FRE-defined \nshell variables and then passes these newly formed '.args' files to FRE's output.stager).\n\nExample with user-defined arguments:\npython3 fretransfer.py userDefs -expName foo_experiment -fileType history restart ascii\n-sourceDir /path/to/the/original/work/directory/where/fileTypes/are/located\n-destDir /path/to/the/destination/directory/ie/archive -destMachine gfdl -stagingType Chained\n\nExample with FRE-defined shell variables:\npython3 fretransfer.py freDefs -paramCheckSumOn 1'", formatter_class=argparse.RawTextHelpFormatter)
+    """parser.add_argument("-help", help='Generate an argFile with user-defined parameters and fre-defined \
                                      shell variables. Example with user-defined arguments: python3 fretransfer.py userDefs \
                                      -expName myExperiment -fileType history restart ascii -sourceDir /home/Jessica.Liptak/temp \
                                      -destDir /archive/Firstname.Lastname -destMachine gfdl \
-                                     Example with fre-defined shell variables: python3 fretransfer.py freDefs -paramCheckSumOn 1 ' )
+                                     Example with fre-defined shell variables: python3 fretransfer.py freDefs -paramCheckSumOn 1 ' ) """
     subparsers = parser.add_subparsers(dest='defCategory')
 
     # sub-parser for user-defined options
@@ -515,6 +519,13 @@ def parse_args():
     return args
 
 
+def call_output_stager(*args):
+
+    script_location = "/ncrc/home2/fms/local/opt/fre-commands/bronx-15/site/ncrc/bin/output.stager"
+    for argFile in args:
+        subprocess.call([script_location, argFile])
+    
+
 def main():
     """
     The meat of fretransfer. Creates an argFile object using a template and writes
@@ -542,13 +553,12 @@ def main():
         for ftype in args.fileType:
             sourcePath = get_sourcepath(args, ftype)
 
-            #A = argFile(ftype, '/home/Jessica.Liptak/temp')
-            A = argFile(ftype, '/home/Kristopher.Rand/foo_test_dir/fretransfer')
-        
+            A = argFile(ftype, args.workDir)
+                
             # clean out argFiles from the working directory
             clean_dir(os.path.split(A.newFileLocation)[0], ['*.args*'])
             # copy the template file to the working directory
-            copy_file(A.templateLocation,A.newFileLocation)
+            copy_file(A.templateLocation, A.newFileLocation)
             # write values in the argDict to the argFile
             write_file(A.newFileLocation, "w", **argDict)
         
@@ -569,12 +579,14 @@ def main():
 
             if len(argFiles) == 0:
                 raise FileNotFoundError("No %s argFile found in %s" % (ftype, sourcePath))
-            elif len(argFiles > 1):
+            elif len(argFiles) > 1:
                 raise FileExistsError("Multiple %s argFiles found in %s" % (ftype, sourcePath))
 
             # write the fre definitions to the existing argFile
             filePath = os.path.join(sourcePath, argFiles[0])
-            write_file(filePath, "w", **argDict)
+            write_file(filePath, "a", **argDict)
+
+    call_output_stager()
             
         
 if __name__ == '__main__': 
