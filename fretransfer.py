@@ -33,8 +33,6 @@ config_userDefs = configparser.ConfigParser()
 config_frerun = configparser.ConfigParser()
 
 logging_format = '%(levelname)s: %(message)s'
-logging.basicConfig(level=logging.INFO, format=logging_format)
-
 
 # Class for argFile to create with a template   
 class argFile:
@@ -443,6 +441,9 @@ def add_argparse_arguments(configparser_obj, argparse_obj):
 
         argparse_obj.add_argument(section, **arg_dict)
 
+    argparse_obj.add_argument('-v', '--verbose', action='store_true', 
+                              help="Optional. Display extra info regarding creation of argFiles")
+
 
 def get_sourcepath(args, ftype):
     """
@@ -485,11 +486,7 @@ def parse_args():
     """
 
     parser = argparse.ArgumentParser(description="Fretransfer generates a FRE-style argFile with user-defined parameters and FRE-defined \nshell variables and then passes these newly formed '.args' files to FRE's output.stager).\n\nExample with user-defined arguments:\npython3 fretransfer.py userDefs -expName foo_experiment -fileType history restart ascii\n-sourceDir /path/to/the/original/work/directory/where/fileTypes/are/located\n-destDir /path/to/the/destination/directory/ie/archive -destMachine gfdl -stagingType Chained\n\nExample with FRE-defined shell variables:\npython3 fretransfer.py freDefs -paramCheckSumOn 1'", formatter_class=argparse.RawTextHelpFormatter)
-    """parser.add_argument("-help", help='Generate an argFile with user-defined parameters and fre-defined \
-                                     shell variables. Example with user-defined arguments: python3 fretransfer.py userDefs \
-                                     -expName myExperiment -fileType history restart ascii -sourceDir /home/Jessica.Liptak/temp \
-                                     -destDir /archive/Firstname.Lastname -destMachine gfdl \
-                                     Example with fre-defined shell variables: python3 fretransfer.py freDefs -paramCheckSumOn 1 ' ) """
+   
     subparsers = parser.add_subparsers(dest='defCategory')
 
     # sub-parser for user-defined options
@@ -515,15 +512,17 @@ def parse_args():
     add_argparse_arguments(config_frerun, parser_frerun)
 
     args = parser.parse_args()
+    if args.verbose:
+        logging.basicConfig(level=logging.INFO, format=logging_format)
 
     return args
 
 
-def call_output_stager(*args):
+#def call_output_stager(*args):
 
-    script_location = "/ncrc/home2/fms/local/opt/fre-commands/bronx-15/site/ncrc/bin/output.stager"
-    for argFile in args:
-        subprocess.call([script_location, argFile])
+#    script_location = "/ncrc/home2/fms/local/opt/fre-commands/bronx-15/site/ncrc/bin/output.stager"
+#    for argFile in args:
+#        subprocess.call([script_location, argFile])
     
 
 def main():
@@ -586,7 +585,7 @@ def main():
             filePath = os.path.join(sourcePath, argFiles[0])
             write_file(filePath, "a", **argDict)
 
-    call_output_stager()
+    #call_output_stager()
             
         
 if __name__ == '__main__': 
