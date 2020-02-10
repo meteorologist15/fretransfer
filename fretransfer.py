@@ -34,6 +34,15 @@ config_frerun = configparser.ConfigParser()
 
 logging_format = '%(levelname)s: %(message)s'
 
+
+class ExtendAction(argparse.Action):
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        items = getattr(namespace, self.dest) or []
+        items.extend(values)
+        setattr(namespace, self.dest, items)
+
+
 # Class for argFile to create with a template   
 class argFile:
     """ 
@@ -436,7 +445,7 @@ def add_argparse_arguments(configparser_obj, argparse_obj):
     for section in configparser_obj.sections():
         arg_dict = dict(configparser_obj[section])
         for key, value in arg_dict.items():
-            if '_' in value:
+            if key != "help" and '_' in value:
                 arg_dict[key] = eval(value.replace('_', ''))
 
         argparse_obj.add_argument(section, **arg_dict)
@@ -486,11 +495,13 @@ def parse_args():
     """
 
     parser = argparse.ArgumentParser(description="Fretransfer generates a FRE-style argFile with user-defined parameters and FRE-defined \nshell variables and then passes these newly formed '.args' files to FRE's output.stager).\n\nExample with user-defined arguments:\npython3 fretransfer.py userDefs -expName foo_experiment -fileType history restart ascii\n-sourceDir /path/to/the/original/work/directory/where/fileTypes/are/located\n-destDir /path/to/the/destination/directory/ie/archive -destMachine gfdl -stagingType Chained\n\nExample with FRE-defined shell variables:\npython3 fretransfer.py freDefs -paramCheckSumOn 1'", formatter_class=argparse.RawTextHelpFormatter)
+    #parser.register('action', 'extend', ExtendAction)
    
     subparsers = parser.add_subparsers(dest='defCategory')
 
     # sub-parser for user-defined options
     parser_userDef = subparsers.add_parser('userDefs', help='User-defined options')
+    parser_userDef.register('action', 'extend', ExtendAction)
 
     if not os.path.exists(freDefArgCfg):
         raise FileNotFoundError("The configuration file for 'freDefs' arguments does not exist")
@@ -502,6 +513,7 @@ def parse_args():
 
     # sub-parser for shell variables set by frerun
     parser_frerun = subparsers.add_parser('freDefs', help='Shell variables set by `frerun`.')
+    parser_frerun.register('action', 'extend', ExtendAction)
 
     if not os.path.exists(freRunArgCfg):
         raise FileNotFoundError("The configuration file for 'frerun' arguments does not exist.")
@@ -514,6 +526,9 @@ def parse_args():
     args = parser.parse_args()
     if args.verbose:
         logging.basicConfig(level=logging.INFO, format=logging_format)
+
+    args.xferOptions = "( --" + " --".join(args.xferOptions) + " )"
+    args.saveOptions = "( --" + " --".join(args.saveOptions) + " )"
 
     return args
 
