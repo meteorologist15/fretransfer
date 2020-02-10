@@ -13,6 +13,7 @@ import logging
 import fnmatch
 import shutil
 import glob
+import time #debug only
 import sys
 import re
 import os
@@ -533,11 +534,10 @@ def parse_args():
     return args
 
 
-#def call_output_stager(*args):
+def call_output_stager(argFileLoc):
 
-#    script_location = "/ncrc/home2/fms/local/opt/fre-commands/bronx-15/site/ncrc/bin/output.stager"
-#    for argFile in args:
-#        subprocess.call([script_location, argFile])
+    script_location = "/ncrc/home2/fms/local/opt/fre-commands/bronx-16/site/ncrc/bin/output.stager"
+    subprocess.call([script_location, argFileLoc], stdout=subprocess.DEVNULL)
     
 
 def main():
@@ -575,6 +575,10 @@ def main():
             copy_file(A.templateLocation, A.newFileLocation)
             # write values in the argDict to the argFile
             write_file(A.newFileLocation, "w", **argDict)
+            #print("Waiting 5 seconds to call output.stager...")
+            #time.sleep(5)
+            #call_output_stager(A.newFileLocation)
+            #print("Finished output.stager")
         
     elif args.defCategory == 'freDefs':
 
@@ -600,7 +604,6 @@ def main():
             filePath = os.path.join(sourcePath, argFiles[0])
             write_file(filePath, "a", **argDict)
 
-    #call_output_stager()
             
         
 if __name__ == '__main__': 
