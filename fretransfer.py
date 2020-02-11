@@ -575,10 +575,10 @@ def main():
             copy_file(A.templateLocation, A.newFileLocation)
             # write values in the argDict to the argFile
             write_file(A.newFileLocation, "w", **argDict)
-            #print("Waiting 5 seconds to call output.stager...")
-            #time.sleep(5)
-            #call_output_stager(A.newFileLocation)
-            #print("Finished output.stager")
+            logging.info("Waiting 5 seconds to call output.stager...")
+            time.sleep(5)
+            call_output_stager(A.newFileLocation)
+            logging.info("Finished output.stager")
         
     elif args.defCategory == 'freDefs':
 

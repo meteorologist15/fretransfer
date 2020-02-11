@@ -17,8 +17,8 @@ set workDir                   =   $workDir
 set ptmpDir                   =   
 set archDir                   =   $archDir
 set outputDirRemote           =   $outputDirRemote
-set saveOptions               =   (  )
-set xferOptions               =   (  )
+set saveOptions               =   ( --clusters=es --partition=ldtn --time=8:00:00 --mincpus=01 --account=gfdl_YOURGROUPLETTER job-name=YOUR_SLURM_JOBNAME )
+set xferOptions               =   ( --clusters=es --partition=rdtn --time=16:00:00 --mincpus=01 --account=gfdl_YOURGROUPLETTER job-name=YOUR_SLURM_JOBNAME )
 set saveRetries               =   0
 set xferRetries               =   0
 set saveRetry                 =   0
@@ -36,5 +36,5 @@ set hsmVersion                =   1.2.4
 set xferToolModuleFilesDir    =   /usw/eslogin/modulefiles-c4
 set xferToolVersion           =   2.3 
 set modulesHomeDir            =   /opt/modules/default
-set mppnccombineOptString     =
+set mppnccombineOptString     =   '-64 -h 16384 -m'
 set gridSpec                  =
