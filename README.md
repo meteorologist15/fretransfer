@@ -4,26 +4,36 @@ This repository contains fretransfer scripts that generate argument files (``arg
 * Python v3.5 or later
 * Python modules:
   * argparse
+  * configparser
   * datetime
   * fnmatch
   * glob
+  * logging
   * os
   * re
   * shutil
+  * stat
   * subprocess
   * sys
-* supported version of fre
+* supported version of FRE
 # Quickstart
-1. open a terminal and clone the repository  
-   `git clone git@github.com:wrongkindofdoctor/fretransfer.git` or  
-   `git clone https://github.com/wrongkindofdoctor/fretransfer.git`
-2. type `cd fretransfer`, then `python3 fretransfer -help` for a list of options.  
+1. open a terminal and clone the repository
+   `git clone git@github.com:meteorologist15/fretransfer.git`
+   `git clone https://github.com/meteorologist15/fretransfer.git`
+2. Load FRE into your environment by running `module load fre/<latest_fre_version>`
+3. Type `cd fretransfer`, then `python3 fretransfer -h` for a list of options.  
    *assumes that the binary command for python v3.x is aliased to `python3`
-3. To run fretransfer on history files with required arguments:  
+4. There are several scenarios to execute fretransfer:
+   
+
+
+
+
+5. To run fretransfer on history files with required arguments:  
    ```
    module load fre/bronx-<latest version number>
-   python3 fretransfer.py userDefs -expName mom6_solo_global_ALE_z -fileType history    
-   -sourceDir /home/sourceDirectory -destDir /archive/Firstname.Lastname -destMach gfdl -groupAccount gfdl_<your group letter>
+   python3 fretransfer.py -expName mom6_solo_global_ALE_z -fileType history    
+   -sourceDir /path/to/history/directory -gfdlDir /path/to/GFDL/destination -
    ```
    where `fileType` is _ascii_ and/or _history_ and/or _restart_ (yes, you can run the script on all three file types at once)  
    `expName` is the name of the experiment that generated the output files  

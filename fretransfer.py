@@ -34,15 +34,40 @@ logging_format = '%(levelname)s: %(message)s'
 
 
 class ExtendAction(argparse.Action):
+    """
+    A class introduced to register a new function into the argparse module
 
+    Inheritance: argparse.Action
+
+    """
     def __call__(self, parser, namespace, values, option_string=None):
+        """
+        Allows argparse to extend the end of a list, rather than its default
+        of merely appending a new list
+
+        Parameters (5):
+        - self: the ExtendAction object
+        - parser: the argparse parser object
+        - namespace: the argparse namespace
+        - values: items in the argparse list
+        - option_string: an optional string for argparse
+
+        Returns (0):
+        - None
+
+        """
         items = getattr(namespace, self.dest) or []
         items.extend(values)
         setattr(namespace, self.dest, items)
 
 
 class ArgumentError(Exception):
-    
+    """
+    Creates an exception specifically for fretransfer argument usage
+
+    Inheritance: Exception class
+
+    """ 
     pass
 
 
@@ -53,6 +78,7 @@ class argFile:
     essential states of a FRE program, in this case, output.stager
 
     Inheritance: None
+
     """  
     def __init__(self, fileType, newFilePath, *args):
         """
@@ -611,7 +637,7 @@ def main():
     """
     The meat of fretransfer. Creates an argFile object using a template and writes
     out a new .args file to the appropriate directory, given specific command-line
-    arguments.
+    arguments. If specified, batch jobs will also be submitted to the Slurm queue.
 
     Parameters (0):
     - None
@@ -683,15 +709,6 @@ def main():
         f = open(args.archDir + "/../" + os.path.basename(args.archDir) + ".ok", 'w')
         f.close()
 
-        #Scenario 1: actionSaveOn = 1, actionCombineOn = 1, actionXferOn = 1 :: combine, tar, transfer :: common
-        #Scenario 2: actionSaveOn = 0, actionCombineOn = 1, actionXferOn = 1 :: combine, no tar, transfer :: common for W-group
-        #Scenario 3: actionSaveOn = 1, actionCombineOn = 0, actionXferOn = 1 :: no combine, tar, transfer :: very rare
-        #Scenario 4: actionSaveOn = 1, actionCombineOn = 0, actionXferOn = 0 :: no combine, tar, no transfer :: somewhat rare
-        #Scenario 5: actionSaveOn = 0, actionCombineOn = 1, actionXferOn = 0 :: combine, no tar, no transfer :: occasional
-        #Scenario 6: actionSaveOn = 0, actionCombineOn = 0, actionXferOn = 0 :: no combine, no tar, no transfer :: never used (why use the tool?)
-        #Scenario 7: actionSaveOn = 1, actionCombineOn = 1, actionXferOn = 0 :: combine, tar, no transfer :: may be used but unlikely
-        #Scenario 8: actionSaveOn = 0, actionCombineOn = 0, actionXferOn = 1 :: no combine, no tar, transfer :: may be used if tar was done already
-
         if args.submit:
 
             if args.actionSaveOn == 0 and args.actionCombineOn == 1 and do_special_case:
@@ -701,6 +718,10 @@ def main():
                 if args.actionCombineOn == 1:
                     if args.actionXferOn == 1:
                         submit_job(A.newFileLocation, args.saveOptions)
+                    else:
+                        submit_job(A.newFileLocation, args.saveOptions)
+                else:
+                    submit_job(A.newFileLocation, args.saveOptions)
 
             elif args.actionXferOn == 1:
                 submit_job(A.newFileLocation, args.xferOptions)
