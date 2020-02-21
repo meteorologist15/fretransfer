@@ -3,7 +3,7 @@
 # FRETRANSFER
 # this is the main fretransfer script
 # example: python3 fretransfer -expName mom6_solo_global_ALE_z -fileType history  
-# -sourceDir /home/sourceDirectory -destDir /archive/Firstname.Lastname -destMach gfdl
+# -sourceDir /home/sourceDirectory -gfdlDir /archive/Firstname.Lastname -destMach gfdl
 ###########################################################################################
 import configparser
 import subprocess
@@ -13,21 +13,18 @@ import logging
 import fnmatch
 import shutil
 import glob
-import time #debug only
+import stat
 import sys
 import re
 import os
 
-#fretransfer_dir = "/home/Kristopher.Rand/git/fretransfer/templates/"
 fretransfer_dir = "/ncrc/home1/Kristopher.Rand/git/fretransfer/templates/"
 template_names = ["historyArgfileTemplate.txt", "restartArgfileTemplate.txt", 
                   "asciiArgfileTemplate.txt"]
 argFile_types = ["history", "restart", "ascii"]
 templates = {k:fretransfer_dir + v for (k,v) in zip(argFile_types, template_names)}
 
-#freRunArgCfg = "/home/Kristopher.Rand/git/fretransfer/freRunArgs.cfg"
 freRunArgCfg = "/ncrc/home1/Kristopher.Rand/git/fretransfer/freRunArgs.cfg"
-#freDefArgCfg = "/home/Kristopher.Rand/git/fretransfer/freDefArgs.cfg"
 freDefArgCfg = "/ncrc/home1/Kristopher.Rand/git/fretransfer/freDefArgs.cfg"
 
 config_userDefs = configparser.ConfigParser()
@@ -42,6 +39,11 @@ class ExtendAction(argparse.Action):
         items = getattr(namespace, self.dest) or []
         items.extend(values)
         setattr(namespace, self.dest, items)
+
+
+class ArgumentError(Exception):
+    
+    pass
 
 
 # Class for argFile to create with a template   
@@ -99,7 +101,7 @@ class argFile:
         """
 
         fileName = argFile.get_new_file_name(self)
-        return os.path.join(rootFilePath, self.fileType, fileName)
+        return os.path.join(rootFilePath, fileName)
 
     
     @staticmethod
@@ -177,7 +179,7 @@ def write_file(filePath, fileStatus="", **kwargs):
     - None
 
     """
-
+    
     if fileStatus != "w":
         if fileStatus != "a":
             raise ValueError("fileStatus must be 'w' or 'a'")
@@ -360,8 +362,7 @@ def get_fre_version():
 
     moduleVersion = os.environ['MODULE_VERSION']
 
-    moduleCmd = '/opt/cray/pe/modules/' + moduleVersion + '/bin/modulecmd'
-    #moduleCmd = '/usr/local/Modules/' + moduleVersion + '/bin/modulecmd'
+    moduleCmd = '/opt/cray/pe/modules/' + moduleVersion + '/bin/modulecmd' #gaea modules
     p = pexec(moduleCmd, "tcsh", "list")
 
     # Read stdout and print each new line
@@ -446,8 +447,8 @@ def add_argparse_arguments(configparser_obj, argparse_obj):
     for section in configparser_obj.sections():
         arg_dict = dict(configparser_obj[section])
         for key, value in arg_dict.items():
-            if key != "help" and '_' in value:
-                arg_dict[key] = eval(value.replace('_', ''))
+            if key != "help" and '!' in value:
+                arg_dict[key] = eval(value.replace('!', ''))
 
         argparse_obj.add_argument(section, **arg_dict)
 
@@ -472,9 +473,7 @@ def get_sourcepath(args, ftype):
     if not (ftype == 'ascii' or ftype == 'restart' or ftype == 'history'):
         raise ValueError("Invalid file type. Must be 'history', 'ascii', or 'restart'")
 
-    sourcePath = os.path.join(args.workDir, ftype)
-    if not os.path.exists(sourcePath):
-        raise NotADirectoryError("Directory %s does not exist!" % sourcePath)
+    sourcePath = args.archDir
 
     os.chdir(sourcePath)
     return sourcePath
@@ -495,14 +494,9 @@ def parse_args():
 
     """
 
-    parser = argparse.ArgumentParser(description="Fretransfer generates a FRE-style argFile with user-defined parameters and FRE-defined \nshell variables and then passes these newly formed '.args' files to FRE's output.stager).\n\nExample with user-defined arguments:\npython3 fretransfer.py userDefs -expName foo_experiment -fileType history restart ascii\n-sourceDir /path/to/the/original/work/directory/where/fileTypes/are/located\n-destDir /path/to/the/destination/directory/ie/archive -destMachine gfdl -stagingType Chained\n\nExample with FRE-defined shell variables:\npython3 fretransfer.py freDefs -paramCheckSumOn 1'", formatter_class=argparse.RawTextHelpFormatter)
-    #parser.register('action', 'extend', ExtendAction)
+    parser = argparse.ArgumentParser(description="Fretransfer generates a FRE-style argFile with user-defined parameters and FRE-defined \nshell variables and then passes these newly formed '.args' files to FRE's output.stager")
    
-    subparsers = parser.add_subparsers(dest='defCategory')
-
-    # sub-parser for user-defined options
-    parser_userDef = subparsers.add_parser('userDefs', help='User-defined options')
-    parser_userDef.register('action', 'extend', ExtendAction)
+    parser.register('action', 'extend', ExtendAction)
 
     if not os.path.exists(freDefArgCfg):
         raise FileNotFoundError("The configuration file for 'freDefs' arguments does not exist")
@@ -510,34 +504,107 @@ def parse_args():
     with open(freDefArgCfg, 'r') as f:
         config_userDefs.read_file(f)
 
-    add_argparse_arguments(config_userDefs, parser_userDef)
-
-    # sub-parser for shell variables set by frerun
-    parser_frerun = subparsers.add_parser('freDefs', help='Shell variables set by `frerun`.')
-    parser_frerun.register('action', 'extend', ExtendAction)
-
-    if not os.path.exists(freRunArgCfg):
-        raise FileNotFoundError("The configuration file for 'frerun' arguments does not exist.")
-
-    with open(freRunArgCfg, 'r') as g:
-        config_frerun.read_file(g)
-
-    add_argparse_arguments(config_frerun, parser_frerun)
+    add_argparse_arguments(config_userDefs, parser)
 
     args = parser.parse_args()
     if args.verbose:
         logging.basicConfig(level=logging.INFO, format=logging_format)
 
-    args.xferOptions = "( --" + " --".join(args.xferOptions) + " )"
-    args.saveOptions = "( --" + " --".join(args.saveOptions) + " )"
+    if args.actionSaveOn or args.actionCombineOn:
+        if len(args.saveOptions) <= 4:
+            raise ArgumentError("If combining or tarring files for batch jobs, Slurm save options must be added via -saveBatchOpts")
+
+    if args.actionXferOn:
+        if len(args.xferOptions) <= 4:
+            raise ArgumentError("If using -transfer, Slurm transfer options must be added via -xferBatchOpts")
 
     return args
 
 
-def call_output_stager(argFileLoc):
+def submit_job(argFileLoc, batchString, special_case=False, special_batch_locs=()):
+    """
+    Calls output.stager via 'batch.scheduler.submit', which creates and submits
+    a batch job via the Slurm scheduler. There are instances where tar files
+    are not desired after a combine has taken place. This is deemed a 'special
+    case'. If so, this function will execute a separately created output.stager
+    batch job, which will then subsequently submit a separately created gcp
+    batch job.
 
-    script_location = "/ncrc/home2/fms/local/opt/fre-commands/bronx-16/site/ncrc/bin/output.stager"
-    subprocess.call([script_location, argFileLoc], stdout=subprocess.DEVNULL)
+    Parameters (4):
+    - argFileLoc: location of the .args file
+    - batchString: String containing Slurm directives for the output.stager job
+    - special_case: Boolean that denotes if un-tarred combined/uncombined files
+                    will be transferred
+    - special_batch_locs: Tuple that references the location of the separately
+                          created batch jobs
+   
+    Returns (0):
+    - None
+
+    """
+
+    if special_case:
+        outputStager_batch_location = special_batch_locs[0]
+        subprocess.call(["sbatch", outputStager_batch_location])
+
+    else:
+        output_stager_exec = shutil.which("output.stager")
+        batch_scheduler_submit_exec = shutil.which("batch.scheduler.submit")
+        subprocess.call([batch_scheduler_submit_exec, "--verbose", "-O", batchString.replace("(", "").replace(")", ""), output_stager_exec])
+    
+
+def write_special_jobs(args, argfile_obj):
+    """
+    Creates separate executable Slurm jobs for transferring un-tarred history, 
+    restart, and ascii files.
+
+    Parameters (2):
+    - args: argparse object
+    - argfile_obj: argFile object
+
+    Returns (1):
+    - Tuple containing the locations of the output.stager job file and the gcp
+      job file.
+
+    """
+
+    batch_name_gcp = args.fileType[0] + "_gcp.batch"
+    batch_name_outputStager = args.fileType[0] + "_outputStager.batch"
+    header = "#!/bin/csh -fx\n"
+    directive_string = ""
+
+    batch_location = args.archDir + "/../"
+    batch_location_outputStager = batch_location + batch_name_outputStager
+    batch_location_gcp = batch_location + batch_name_gcp
+
+    for option in args.saveOptions:
+        directive_string += "#SBATCH --" + option + "\n"
+
+    job_content_outputStager = header + directive_string + "\n" + "module load fre/bronx-16\n" \
+                               + "alias outputStager `which output.stager`\n" \
+                               + "alias sbatch `which sbatch`\n" \
+                               + "outputStager " + argfile_obj.newFileLocation + "\n" \
+                               + "sbatch " + batch_location_gcp
+
+    with open(batch_location_outputStager, 'w') as f:
+        f.write(job_content_outputStager)
+
+    os.chmod(batch_location_outputStager, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH) #Equivalent to chmod 755
+
+    directive_string = ""
+    for option in args.xferOptions:
+        directive_string += "#SBATCH --" + option + "\n"
+
+    job_content_gcp = header + directive_string + "\n" + "alias gcp `which gcp`\n" \
+                  + "gcp -r --create-dirs --verbose " + args.archDir + " gfdl:" \
+                  + args.outputDirRemote
+
+    with open(batch_location_gcp, 'w') as g:
+        g.write(job_content_gcp)
+
+    os.chmod(batch_location_gcp, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH) #Equivalent to chmod 755
+    
+    return (batch_location_outputStager, batch_location_gcp)
     
 
 def main():
@@ -556,56 +623,89 @@ def main():
 
     args = parse_args()
 
-    # set up argFiles with user-defined options  
-    if args.defCategory == 'userDefs':
-        logging.info('Parsing Userdefs')
+    logging.info('Parsing userDef arguments')
+
+    do_special_case = False
+
+    if args.paramCompressOn:
+        args.paramCompressOn = 1
+    else:
+        args.paramCompressOn = 0
     
-        argDict = {}
-        for a in vars(args):
-            argDict[a] = getattr(args, a)
+    if args.actionCombineOn:
+        args.actionCombineOn = 1
+    else:
+        args.actionCombineOn = 0
+
+    if args.actionSaveOn:
+        args.actionSaveOn = 1
+        args.paramArchiveOn = 1
+    else:
+        args.actionSaveOn = 0
+
+    if args.actionXferOn:
+        args.actionXferOn = 1
+        if args.actionCombineOn == 1 and args.actionSaveOn == 0:
+            args.actionXferOn = 0 #special case
+            do_special_case = True
+    else:
+        args.actionXferOn = 0
+  
+    argDict = {}
+    for a in vars(args):
+        argDict[a] = getattr(args, a)
     
-        for ftype in args.fileType:
-            sourcePath = get_sourcepath(args, ftype)
+    for ftype in args.fileType:
+        sourcePath = get_sourcepath(args, ftype)
 
-            A = argFile(ftype, args.workDir)
-                
-            # clean out argFiles from the working directory
-            clean_dir(os.path.split(A.newFileLocation)[0], ['*.args*'])
-            # copy the template file to the working directory
-            copy_file(A.templateLocation, A.newFileLocation)
-            # write values in the argDict to the argFile
-            write_file(A.newFileLocation, "w", **argDict)
-            logging.info("Waiting 5 seconds to call output.stager...")
-            time.sleep(5)
-            call_output_stager(A.newFileLocation)
-            logging.info("Finished output.stager")
+        A = argFile(ftype, args.archDir)
+
+        # clean out argFiles from the working directory
+        clean_dir(os.path.split(A.newFileLocation)[0], ['*.args*'])
+        # copy the template file to the working directory
+
+        if do_special_case:
+            spec_batch_locs = write_special_jobs(args, A)
+
+        args.saveOptions.append("export=argFile=" + A.newFileLocation)
+        args.xferOptions.append("export=argFile=" + A.newFileLocation)
+
+        args.xferOptions = "( --" + " --".join(args.xferOptions) + " )"
+        args.saveOptions = "( --" + " --".join(args.saveOptions) + " )"
+
+        argDict["saveOptions"] = args.saveOptions
+        argDict["xferOptions"] = args.xferOptions
+
+        copy_file(A.templateLocation, A.newFileLocation)
+        # write values in the argDict to the argFile
+        write_file(A.newFileLocation, "w", **argDict)
+
+        f = open(args.archDir + "/../" + os.path.basename(args.archDir) + ".ok", 'w')
+        f.close()
+
+        #Scenario 1: actionSaveOn = 1, actionCombineOn = 1, actionXferOn = 1 :: combine, tar, transfer :: common
+        #Scenario 2: actionSaveOn = 0, actionCombineOn = 1, actionXferOn = 1 :: combine, no tar, transfer :: common for W-group
+        #Scenario 3: actionSaveOn = 1, actionCombineOn = 0, actionXferOn = 1 :: no combine, tar, transfer :: very rare
+        #Scenario 4: actionSaveOn = 1, actionCombineOn = 0, actionXferOn = 0 :: no combine, tar, no transfer :: somewhat rare
+        #Scenario 5: actionSaveOn = 0, actionCombineOn = 1, actionXferOn = 0 :: combine, no tar, no transfer :: occasional
+        #Scenario 6: actionSaveOn = 0, actionCombineOn = 0, actionXferOn = 0 :: no combine, no tar, no transfer :: never used (why use the tool?)
+        #Scenario 7: actionSaveOn = 1, actionCombineOn = 1, actionXferOn = 0 :: combine, tar, no transfer :: may be used but unlikely
+        #Scenario 8: actionSaveOn = 0, actionCombineOn = 0, actionXferOn = 1 :: no combine, no tar, transfer :: may be used if tar was done already
+
+        if args.submit:
+
+            if args.actionSaveOn == 0 and args.actionCombineOn == 1 and do_special_case:
+                submit_job(A.newFileLocation, args.saveOptions, special_case=True, special_batch_locs=spec_batch_locs)
+
+            elif args.actionSaveOn == 1:
+                if args.actionCombineOn == 1:
+                    if args.actionXferOn == 1:
+                        submit_job(A.newFileLocation, args.saveOptions)
+
+            elif args.actionXferOn == 1:
+                submit_job(A.newFileLocation, args.xferOptions)
         
-    elif args.defCategory == 'freDefs':
-
-        logging.info('Parsing freDefs')
-        argDict = {}
-
-        for a in vars(args):
-            if a != 'fileType' and a != 'workDir':
-                argDict[a] = getattr(args, a)
-
-        for ftype in args.fileType:
-            sourcePath = get_sourcepath(args, ftype)
-
-            # check that one argFile already exists in the working directory 
-            argFiles = [n for n in glob.glob('*.args') if os.path.isfile(n)]
-
-            if len(argFiles) == 0:
-                raise FileNotFoundError("No %s argFile found in %s" % (ftype, sourcePath))
-            elif len(argFiles) > 1:
-                raise FileExistsError("Multiple %s argFiles found in %s" % (ftype, sourcePath))
-
-            # write the fre definitions to the existing argFile
-            filePath = os.path.join(sourcePath, argFiles[0])
-            write_file(filePath, "a", **argDict)
-
-            
-        
+       
 if __name__ == '__main__': 
 
     main()
