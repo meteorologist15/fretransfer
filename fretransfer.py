@@ -18,14 +18,18 @@ import sys
 import re
 import os
 
-fretransfer_dir = "/ncrc/home1/Kristopher.Rand/git/fretransfer/templates/"
+base_repo_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
+print(base_repo_dir)
+template_dir = os.path.join(base_repo_dir, "templates")
 template_names = ["historyArgfileTemplate.txt", "restartArgfileTemplate.txt", 
                   "asciiArgfileTemplate.txt"]
 argFile_types = ["history", "restart", "ascii"]
-templates = {k:fretransfer_dir + v for (k,v) in zip(argFile_types, template_names)}
+templates = {k:template_dir + v for (k,v) in zip(argFile_types, template_names)}
 
-freRunArgCfg = "/ncrc/home1/Kristopher.Rand/git/fretransfer/freRunArgs.cfg"
-freDefArgCfg = "/ncrc/home1/Kristopher.Rand/git/fretransfer/freDefArgs.cfg"
+freRunArgCfg = os.path.join(base_repo_dir, "freRunArgs.cfg")
+print(freRunArgCfg)
+freDefArgCfg = os.path.join(base_repo_dir, "freDefArgs.cfg")
+print(freDefArgCfg)
 
 config_userDefs = configparser.ConfigParser()
 config_frerun = configparser.ConfigParser()
