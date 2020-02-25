@@ -20,28 +20,38 @@ This repository contains fretransfer scripts that generate argument files (``arg
 1. open a terminal and clone the repository
    `git clone git@github.com:meteorologist15/fretransfer.git`
    `git clone https://github.com/meteorologist15/fretransfer.git`
-2. Load FRE into your environment by running `module load fre/<latest_fre_version>`
+2. Load FRE into your environment by running `module load fre/bronx-16`
 3. Type `cd fretransfer`, then `python3 fretransfer -h` for a list of options.  
    *assumes that the binary command for python v3.x is aliased to `python3`
-4. There are several scenarios to execute fretransfer:
+4. There are several scenarios for which to execute fretransfer:
+
+   * Scenario 1: Combine, tar, and transfer files from Gaea to GFDL
+   Example: `python3 fretransfer -expName test_experiment -fileType history -sourceDir /path/to/history/directory -gfdlDir /path/to/GFDL/destination -combine -tar -compress -transfer -saveBatchOpts output=/path/for/combine-tar/job/file/stdout account=gfdl_YOURGROUPLETTER job-name=tar_combine_job mail-type=fail -xferBatchOpts output=/path/for/transfer/job/file/stdout account=gfdl_YOURGROUPLETTER job-name=transfer_job mail-type=fail -submit`
    
+   * Scenario 2: Combine, no tar, and transfer files
+   Note: Creates 2 separate batch jobs (outputStager and gcp) and saves them outside the sourceDir.
+   Example: `python3 fretransfer -expName test_experiment -fileType history -sourceDir /path/to/history/directory -gfdlDir /path/to/GFDL/destination -combine -transfer -saveBatchOpts output=/path/for/combine/job/file/stdout account=gfdl_YOURGROUPLETTER job-name=tar_combine_job mail-type=fail -xferBatchOpts output=/path/for/transfer/job/file/stdout account=gfdl_YOURGROUPLETTER job-name=transfer_job mail-type=fail -submit`
+   
+   * Scenario 3: Combine, no tar, no transfer
+   Example: `python3 fretransfer -expName test_experiment -fileType history -sourceDir /path/to/history/directory -gfdlDir /path/to/GFDL/destination -combine -saveBatchOpts output=/path/for/combine/job/file/stdout account=gfdl_YOURGROUPLETTER job-name=tar_combine_job mail-type=fail -submit`
+   
+   * Scenario 4: No combine, tar, transfer
+   Example: `python3 fretransfer -expName test_experiment -fileType history -sourceDir /path/to/history/directory -gfdlDir /path/to/GFDL/destination -tar -compress -transfer -saveBatchOpts output=/path/for/tar/job/file/stdout account=gfdl_YOURGROUPLETTER job-name=tar_combine_job mail-type=fail -xferBatchOpts output=/path/for/transfer/job/file/stdout account=gfdl_YOURGROUPLETTER job-name=transfer_job mail-type=fail -submit`
+   
+   * Scenario 5: No combine, no tar, transfer
+   Note: If a .tar file exists outside the sourceDir, fretransfer will natively call output.stager. If not (i.e. only combined files present, mixture of uncombined/combined, and desiring to transfer a directory of all uncombined files), fretransfer will create a gcp batch job and submit it.
+   Example: `python3 fretransfer -expName test_experiment -fileType history -sourceDir /path/to/history/directory -gfdlDir /path/to/GFDL/destination -transfer -xferBatchOpts output=/path/for/transfer/job/file/stdout account=gfdl_YOURGROUPLETTER job-name=transfer_job mail-type=fail -submit`
+   
+   * Scenario 6: No combine, no tar, no transfer (dry run)
+   Example: `python3 fretransfer -expName test_experiment -fileType history -sourceDir /path/to/history/directory -gfdlDir /path/to/GFDL/destination`
+   
+   * Scenario 7: Combine, tar, no transfer
+   Example: `python3 fretransfer -expName test_experiment -fileType history -sourceDir /path/to/history/directory -gfdlDir /path/to/GFDL/destination -combine -tar -compress -saveBatchOpts output=/path/for/combine/job/file/stdout account=gfdl_YOURGROUPLETTER job-name=tar_combine_job mail-type=fail -submit`
+   
+   * Scenario 8: No combine, tar, no transfer
+   Example: `python3 fretransfer -expName test_experiment -fileType history -sourceDir /path/to/history/directory -gfdlDir /path/to/GFDL/destination -tar -saveBatchOpts output=/path/for/combine/job/file/stdout account=gfdl_YOURGROUPLETTER job-name=tar_combine_job mail-type=fail -submit`
+   Note: Only using '-tar' will create an uncompressed archive file. Use '-compress' for the vice versa. 
 
-
-
-
-5. To run fretransfer on history files with required arguments:  
-   ```
-   module load fre/bronx-<latest version number>
-   python3 fretransfer.py -expName mom6_solo_global_ALE_z -fileType history    
-   -sourceDir /path/to/history/directory -gfdlDir /path/to/GFDL/destination -
-   ```
-   where `fileType` is _ascii_ and/or _history_ and/or _restart_ (yes, you can run the script on all three file types at once)  
-   `expName` is the name of the experiment that generated the output files  
-   `sourceDir` is the directory with RESTART, HISTORY, and ASCII directories that contain the files to transfer  
-   `destDir` is the root directory of the machine where the files will be transferred  
-   `destMach` is the machine you are moving the files to (`gaea` and `gfdl` are currently supported)  
-   `groupAccount` is the name of your gfdl group account  
- 
 # Support or Contact
 It you are having problems using the code, open an issue in the fretransfer repository:  
-https://github.com/wrongkindofdoctor/fretransfer/issues
+https://github.com/meteorologist15/fretransfer/issues
