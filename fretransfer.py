@@ -547,7 +547,7 @@ def parse_args():
     return args
 
 
-def submit_job(argFileLoc, batchString, special_case=False, special_batch_locs=()):
+def submit_job(argFileLoc, batchString, special_case=[False, False], special_batch_locs=("", "")):
     """
     Calls output.stager via 'batch.scheduler.submit', which creates and submits
     a batch job via the Slurm scheduler. There are instances where tar files
@@ -559,9 +559,9 @@ def submit_job(argFileLoc, batchString, special_case=False, special_batch_locs=(
     Parameters (4):
     - argFileLoc: location of the .args file
     - batchString: String containing Slurm directives for the output.stager job
-    - special_case: Boolean that denotes if un-tarred combined/uncombined files
+    - special_case: List of Booleans that denotes if un-tarred combined/uncombined files
                     will be transferred
-    - special_batch_locs: Tuple that references the location of the separately
+    - special_batch_locs: Tuple of strings that references the location of the separately
                           created batch jobs
    
     Returns (0):
@@ -569,10 +569,12 @@ def submit_job(argFileLoc, batchString, special_case=False, special_batch_locs=(
 
     """
 
-    if special_case:
+    if special_case[0]:
         outputStager_batch_location = special_batch_locs[0]
         subprocess.call(["sbatch", outputStager_batch_location])
-
+    elif special_case[1]:
+        gcp_batch_location = special_batch_locs[1]
+        subprocess.call(["sbatch", gcp_batch_location])
     else:
         output_stager_exec = shutil.which("output.stager")
         batch_scheduler_submit_exec = shutil.which("batch.scheduler.submit")
@@ -651,7 +653,8 @@ def main():
 
     logging.info('Parsing userDef arguments')
 
-    do_special_case = False
+    special_cases = [False, False]
+    spec_batch_locs = ("", "")
 
     if args.paramCompressOn:
         args.paramCompressOn = 1
@@ -673,9 +676,12 @@ def main():
         args.actionXferOn = 1
         if args.actionCombineOn == 1 and args.actionSaveOn == 0:
             args.actionXferOn = 0 #special case
-            do_special_case = True
+            special_cases[0] = True
     else:
         args.actionXferOn = 0
+
+    if args.paramCompressOn == 1 and args.actionSaveOn == 0:
+        raise ArgumentError("You must specify the '-tar' argument when '-compress' is used!")
   
     argDict = {}
     for a in vars(args):
@@ -690,7 +696,11 @@ def main():
         clean_dir(os.path.split(A.newFileLocation)[0], ['*.args*'])
         # copy the template file to the working directory
 
-        if do_special_case:
+        tar_list = glob.glob(args.archDir + "/../*.tar")
+        if (os.path.basename(args.archDir) + ".tar") in tar_list:
+            special_cases[1] = True
+
+        if special_cases[0] or special_cases[1]:
             spec_batch_locs = write_special_jobs(args, A)
 
         args.saveOptions.append("export=argFile=" + A.newFileLocation)
@@ -710,9 +720,9 @@ def main():
         f.close()
 
         if args.submit:
-
-            if args.actionSaveOn == 0 and args.actionCombineOn == 1 and do_special_case:
-                submit_job(A.newFileLocation, args.saveOptions, special_case=True, special_batch_locs=spec_batch_locs)
+            # needs a bit more work
+            if (args.actionSaveOn == 0 and args.actionCombineOn == 1) or (special_cases[0] or special_cases[1]):
+                submit_job(A.newFileLocation, args.saveOptions, special_case=special_cases, special_batch_locs=spec_batch_locs)
 
             elif args.actionSaveOn == 1:
                 if args.actionCombineOn == 1:
@@ -723,7 +733,7 @@ def main():
                 else:
                     submit_job(A.newFileLocation, args.saveOptions)
 
-            elif args.actionXferOn == 1:
+            elif args.actionXferOn == 1: #tar has already been made
                 submit_job(A.newFileLocation, args.xferOptions)
         
        
