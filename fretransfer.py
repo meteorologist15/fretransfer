@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
 
-# FRETRANSFER
-# this is the main fretransfer script
-# example: python3 fretransfer -expName mom6_solo_global_ALE_z -fileType history  
-# -sourceDir /home/sourceDirectory -gfdlDir /archive/Firstname.Lastname -destMach gfdl
-###########################################################################################
 import configparser
 import subprocess
 import argparse
@@ -19,7 +14,6 @@ import re
 import os
 
 base_repo_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
-print(base_repo_dir)
 template_dir = os.path.join(base_repo_dir, "templates")
 template_names = ["historyArgfileTemplate.txt", "restartArgfileTemplate.txt", 
                   "asciiArgfileTemplate.txt"]
@@ -27,9 +21,7 @@ argFile_types = ["history", "restart", "ascii"]
 templates = {k:template_dir + v for (k,v) in zip(argFile_types, template_names)}
 
 freRunArgCfg = os.path.join(base_repo_dir, "freRunArgs.cfg")
-print(freRunArgCfg)
 freDefArgCfg = os.path.join(base_repo_dir, "freDefArgs.cfg")
-print(freDefArgCfg)
 
 config_userDefs = configparser.ConfigParser()
 config_frerun = configparser.ConfigParser()
@@ -724,7 +716,6 @@ def main():
         f.close()
 
         if args.submit:
-            # needs a bit more work
             if (args.actionSaveOn == 0 and args.actionCombineOn == 1) or (special_cases[0] or special_cases[1]):
                 submit_job(A.newFileLocation, args.saveOptions, special_case=special_cases, special_batch_locs=spec_batch_locs)
 
@@ -737,7 +728,7 @@ def main():
                 else:
                     submit_job(A.newFileLocation, args.saveOptions)
 
-            elif args.actionXferOn == 1: #tar has already been made
+            elif args.actionXferOn == 1: 
                 submit_job(A.newFileLocation, args.xferOptions)
         
        
