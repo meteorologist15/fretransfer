@@ -30,14 +30,14 @@ This repository contains fretransfer scripts that generate argument files (``arg
 5. There are several scenarios for which to execute fretransfer. All examples below utilize history files, but can encompass ascii and restart files as well:
 
    * Scenario 1: Combine, tar, and transfer files from Gaea to GFDL
-   Example: `python3 fretransfer.py -expName test_experiment -fileType history -sourceDir history/ -gfdlDir /path/to/GFDL/destination -combine -tar -compress -transfer -saveBatchOpts output=/path/for/combine-tar/job/file/stdout account=gfdl_YOURGROUPLETTER job-name=tar_combine_job mail-type=fail -xferBatchOpts output=/path/for/transfer/job/file/stdout account=gfdl_YOURGROUPLETTER job-name=transfer_job mail-type=fail -submit`
+   Example: `python3 fretransfer.py -expName test_experiment -fileType history -sourceDir $PWD/tests/test_data/history/ -gfdlDir /path/to/GFDL/destination -combine -tar -compress -transfer -saveBatchOpts output=/path/for/combine-tar/job/file/stdout account=gfdl_YOURGROUPLETTER job-name=tar_combine_job mail-type=fail -xferBatchOpts output=/path/for/transfer/job/file/stdout account=gfdl_YOURGROUPLETTER job-name=transfer_job mail-type=fail -submit`
    
    * Scenario 2: Combine, no tar, and transfer files
    Note: Creates 2 separate batch jobs (outputStager and gcp) and saves them outside the sourceDir.
-   Example: `python3 fretransfer.py -expName test_experiment -fileType history -sourceDir history/ -gfdlDir /path/to/GFDL/destination -combine -transfer -saveBatchOpts output=/path/for/combine/job/file/stdout account=gfdl_YOURGROUPLETTER job-name=tar_combine_job mail-type=fail -xferBatchOpts output=/path/for/transfer/job/file/stdout account=gfdl_YOURGROUPLETTER job-name=transfer_job mail-type=fail -submit`
+   Example: `python3 fretransfer.py -expName test_experiment -fileType history -sourceDir tests/test_data/history/ -gfdlDir /path/to/GFDL/destination -combine -transfer -saveBatchOpts output=/path/for/combine/job/file/stdout account=gfdl_YOURGROUPLETTER job-name=tar_combine_job mail-type=fail -xferBatchOpts output=/path/for/transfer/job/file/stdout account=gfdl_YOURGROUPLETTER job-name=transfer_job mail-type=fail -submit`
    
    * Scenario 3: Combine, no tar, no transfer
-   Example: `python3 fretransfer.py -expName test_experiment -fileType history -sourceDir history/ -gfdlDir /path/to/GFDL/destination -combine -saveBatchOpts output=/path/for/combine/job/file/stdout account=gfdl_YOURGROUPLETTER job-name=tar_combine_job mail-type=fail -submit`
+   Example: `python3 fretransfer.py -expName test_experiment -fileType history -sourceDir tests/test_data/history/ -gfdlDir /path/to/GFDL/destination -combine -saveBatchOpts output=/path/for/combine/job/file/stdout account=gfdl_YOURGROUPLETTER job-name=tar_combine_job mail-type=fail -submit`
    
    * Scenario 4: No combine, tar, transfer
    Example: `python3 fretransfer.py -expName test_experiment -fileType history -sourceDir history/ -gfdlDir /path/to/GFDL/destination -tar -compress -transfer -saveBatchOpts output=/path/for/tar/job/file/stdout account=gfdl_YOURGROUPLETTER job-name=tar_combine_job mail-type=fail -xferBatchOpts output=/path/for/transfer/job/file/stdout account=gfdl_YOURGROUPLETTER job-name=transfer_job mail-type=fail -submit`
